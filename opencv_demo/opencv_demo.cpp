@@ -33,7 +33,7 @@ int main (int argc, char *argv[])
     sigaction(SIGINT, &sigIntHandler, NULL);
     // <<<<< Enable Ctrl+C
 	
-	l3_grabber grabber;
+	L3_grabber grabber;
 	
 	grabber.start();
 	
