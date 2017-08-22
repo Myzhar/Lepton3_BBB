@@ -18,7 +18,7 @@ public:
     const char* getLastFrame(int* outW=NULL, int* outH=NULL);
 
 protected:
-    void acquire_func();
+    void acquire_thread_func();
     
 private:
     std::timed_mutex mFrameMutex;

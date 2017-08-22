@@ -24,7 +24,7 @@ l3_grabber::~l3_grabber()
 
 bool l3_grabber::start()
 {
-	mThread = std::thread( &l3_grabber::acquire_func, this );
+	mThread = std::thread( &l3_grabber::acquire_thread_func, this );
 }
 
 const char* l3_grabber::getLastFrame(int* outW, int* outH)
@@ -60,7 +60,7 @@ const char* l3_grabber::getLastFrame(int* outW, int* outH)
 	return NULL;
 }
 
-void l3_grabber::acquire_func()
+void l3_grabber::acquire_thread_func()
 {
 	cout << "Acquire thread started ..." << endl; 
 	

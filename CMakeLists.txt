@@ -6,11 +6,7 @@ set(CMAKE_DEBUG_POSTFIX "_d")
 
 #########################################################
 # FLAGS
-if (UNIX)
-    ADD_DEFINITIONS(
-        -std=c++11
-    )
-endif (UNIX)
+set (CMAKE_CXX_STANDARD 11)
 #########################################################
 
 # Library source code

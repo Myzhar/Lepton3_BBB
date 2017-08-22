@@ -1,3 +1,5 @@
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-std=c++11 -pthread")
+
 #########################################################
 # SOURCES
 file(GLOB_RECURSE GRB_SRC *.c *.cpp)
