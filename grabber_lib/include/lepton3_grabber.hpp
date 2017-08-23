@@ -13,6 +13,16 @@
 
 class L3_grabber
 {
+private:
+    /*typedef struct _spi_ioc_transfer {
+        uint64_t tx_buf;// = (unsigned long)NULL,
+        uint64_t rx_buf; //= (unsigned long)mSpiRxBuf,
+        uint32_t len; //= LEP_SPI_BUFFER,
+        uint16_t delay_usecs; // = mSpiDelay,
+        uint32_t speed_hz; // = mSpiSpeed,
+        uint8_t bits_per_word; // = mSpiBits
+    } spi_ioc_transfer;*/
+
 public:
     L3_grabber(std::string SpiDevice="/dev/spidev1.0");
     ~L3_grabber();
@@ -43,11 +53,11 @@ private:
     // >>>>> VideoSPI
     std::string mSpiDevice;
 
-    uint8_t mSpiMode = SPI_CPOL | SPI_CPHA;
-    uint8_t mSpiBits = 8;
-    uint32_t mSpiSpeed = 20000000;
-    uint16_t mSpiDelay = 65535;
-    uint8_t mSpiStatusBits = 0;
+    uint8_t mSpiMode;
+    uint8_t mSpiBits;
+    uint32_t mSpiSpeed;
+    uint16_t mSpiDelay;
+    uint8_t mSpiStatusBits;
 
     int8_t mSpiLastPacket = -1;
 

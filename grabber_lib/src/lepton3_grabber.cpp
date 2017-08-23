@@ -26,6 +26,12 @@ L3_grabber::L3_grabber( std::string SpiDevice )
     mStop = false;
 
     mSpiDevice = SpiDevice;
+
+    mSpiMode = SPI_CPOL | SPI_CPHA;
+    mSpiBits = 8;
+    mSpiSpeed = 20000000;
+    mSpiDelay = 65535;
+    mSpiStatusBits = 0;
 }
 
 L3_grabber::~L3_grabber()
@@ -214,14 +220,14 @@ int L3_grabber::SpiTransfer(int fd)
     int state = 0;  //set to 1 when a valid segment is found
     int pixel = 0;
 
-    struct spi_ioc_transfer tr = {
-        .tx_buf = (unsigned long)NULL,
-                .rx_buf = (unsigned long)mSpiRxBuf,
-                .len = LEP_SPI_BUFFER,
-                .delay_usecs = mSpiDelay,
-                .speed_hz = mSpiSpeed,
-                .bits_per_word = mSpiBits
-    };
+    spi_ioc_transfer tr;
+
+    tr.tx_buf = (unsigned long)NULL;
+    tr.rx_buf = (unsigned long)mSpiRxBuf;
+    tr.len = LEP_SPI_BUFFER;
+    tr.delay_usecs = mSpiDelay;
+    tr.speed_hz = mSpiSpeed;
+    tr.bits_per_word = mSpiBits;
 
     ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
     if (ret < 1) {
@@ -289,7 +295,7 @@ int L3_grabber::SpiTransfer(int fd)
 void L3_grabber::frameConvert()
 {
     uint16_t maxval = 0;
-    uint16_t minval = UINT_MAX;
+    uint16_t minval = USHRT_MAX;
 
     printf("Calculating min/max values for proper scaling...\n");
 
