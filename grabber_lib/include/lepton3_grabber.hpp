@@ -28,6 +28,7 @@ public:
     ~L3_grabber();
 
     bool start();
+    void stop();
 
     const char* getLastFrame(int* outW=NULL, int* outH=NULL);
 
@@ -47,10 +48,12 @@ private:
     const uint8_t mFrameH;
     
     char mLastFrame[FRAME_W*FRAME_H];
+    char mBufFrame[FRAME_W*FRAME_H];
     
     bool mStop;
+    bool mFrameValid;
 
-    // >>>>> VideoSPI
+    // >>>>> VoSPI
     std::string mSpiDevice;
 
     uint8_t mSpiMode;
@@ -63,7 +66,7 @@ private:
 
 
     uint8_t mSpiRxBuf[LEP_SPI_BUFFER] = {0};
-    uint16_t mSpiLeptonImg[240][80];
-    // <<<<< VideoSPI
+    unsigned int mSpiLeptonImg[240][80];
+    // <<<<< VoSPI
 };
 

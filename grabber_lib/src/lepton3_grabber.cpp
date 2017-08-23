@@ -29,19 +29,16 @@ L3_grabber::L3_grabber( std::string SpiDevice )
 
     mSpiMode = SPI_CPOL | SPI_CPHA;
     mSpiBits = 8;
-    mSpiSpeed = 20000000;
+    mSpiSpeed = 16000000;
     mSpiDelay = 65535;
-    mSpiStatusBits = 0;
+    mSpiStatusBits = 0x0;
+    
+    mFrameValid = false;
 }
 
 L3_grabber::~L3_grabber()
 {
-    mStop = true;
-
-    if(mThread.joinable())
-    {
-        mThread.join();
-    }
+    stop();
 }
 
 bool L3_grabber::start()
@@ -49,11 +46,36 @@ bool L3_grabber::start()
     mThread = std::thread( &L3_grabber::acquire_thread_func, this );
 }
 
+void L3_grabber::stop()
+{
+	mStop = true;
+
+    if(mThread.joinable())
+    {
+        mThread.join();
+    }
+}
+
 const char* L3_grabber::getLastFrame(int* outW, int* outH)
 {
-
-    if (mFrameMutex.try_lock_for(msec(500)))
+    if(mFrameMutex.try_lock_for(msec(500)))
     {
+    	if(!mFrameValid)
+    	{
+    		if(outW)
+    		{
+        		*outW = -1;
+    		}
+
+    		if(outH)
+    		{
+        		*outH = -1;
+    		}
+
+			mFrameMutex.unlock();
+    		return NULL;
+    	}
+    
         if(outW)
         {
             *outW = mFrameW;
@@ -64,6 +86,7 @@ const char* L3_grabber::getLastFrame(int* outW, int* outH)
             *outH = mFrameH;
         }
 
+		mFrameValid = false;
         mFrameMutex.unlock();
 
         return mLastFrame;
@@ -132,10 +155,12 @@ void L3_grabber::acquire_thread_func()
         cout << "can't get max speed hz" << endl;
     }
 
-    cout << "spi mode: " << mSpiMode << endl;
-    cout << "bits per word: " << mSpiBits  << endl;
+    cout << "spi mode: " << (int)mSpiMode << endl;
+    cout << "bits per word: " << (int)mSpiBits  << endl;
     cout << "max speed: " << mSpiSpeed << " Hz ("<< mSpiSpeed/1000 << " KHz)" << endl;
     // <<<<< Open SPI
+    
+    bool SPI_error=false;
 
     while(1)
     {
@@ -144,21 +169,31 @@ void L3_grabber::acquire_thread_func()
             cout << "... Acquire thread stopped ..." << endl;
             break;
         }
+        
+        mSpiStatusBits = 0x0;
 
         // >>>>> Get frame from VoSPI
         while(mSpiStatusBits != 0x0f)
         {
-            SpiTransfer(fd);
+            if( SpiTransfer(fd) == -1 || mStop )
+            {
+            	SPI_error = true;
+            	break;
+            }
+            SPI_error = false;
+            
+            
         }
         // <<<<< Get frame from VoSPI
+        
+        if(SPI_error)
+        	break;
 
-
-        // >>>>> Convert frame to image
-        mFrameMutex.lock();
-        frameConvert();
-        mFrameMutex.unlock();
+        // >>>>> Convert frame to image        
+        frameConvert();        
         // <<<<< Convert frame to image
 
+		
     }
 
     close(fd);
@@ -210,6 +245,8 @@ the Free Software Foundation; either version 2 of the License.
 
 int L3_grabber::SpiTransfer(int fd)
 {
+	cout << "VoSPI transfer" << endl;
+
     int ret;
     int i;
     int ip;
@@ -228,7 +265,13 @@ int L3_grabber::SpiTransfer(int fd)
     tr.delay_usecs = mSpiDelay;
     tr.speed_hz = mSpiSpeed;
     tr.bits_per_word = mSpiBits;
-
+    tr.cs_change = 0;
+    tr.tx_nbits = 0;
+    tr.rx_nbits = 0;
+    tr.pad = 0;
+    
+    mSpiStatusBits=0;
+    
     ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
     if (ret < 1) {
         cout << "Can't read spi data" << endl;
@@ -267,7 +310,7 @@ int L3_grabber::SpiTransfer(int fd)
             {
                 state = 1;
                 current_segment = segment;
-                cout << "new segment: " << segment << endl;
+                cout << "new segment: " << (int)segment << endl;
             }
         }
 
@@ -289,27 +332,33 @@ int L3_grabber::SpiTransfer(int fd)
         }
     }
 
+	cout << "mSpiStatusBits" << (int)mSpiStatusBits << endl;
+
     return mSpiStatusBits;
 }
 
 void L3_grabber::frameConvert()
 {
-    uint16_t maxval = 0;
-    uint16_t minval = USHRT_MAX;
+    unsigned int maxval = 0;
+    unsigned int minval = UINT_MAX;
+    
+    int rgb_conv = 64;
+    int rgb_val = 0;
+    
 
     printf("Calculating min/max values for proper scaling...\n");
 
     for(int i = 0; i < 240; i++)
     {
-
         for(int j = 0; j < 80; j++)
         {
-            uint16_t value = mSpiLeptonImg[i][j];
+            unsigned int value = mSpiLeptonImg[i][j];
 
             if( value > maxval )
             {
                 maxval = value;
             }
+            
             if( value < minval )
             {
                 minval = value;
@@ -319,32 +368,39 @@ void L3_grabber::frameConvert()
 
     cout << "maxval = " << maxval << endl;
     cout << "minval = " << minval << endl;
+    
+    rgb_conv = 16383 / (maxval - minval);
 
     //fprintf(f,"P2\n160 120\n%u\n",maxval-minval);
 
-
+	int idx = 0;
     for(int i=0; i < 240; i += 2)
     {
-        int idx = 0;
-
-        /* first 80 pixels in row */
+    	/* first 80 pixels in row */
         for(int j = 0; j < 80; j++)
         {
-            mLastFrame[idx] = mSpiLeptonImg[i][j] - minval;
+        	rgb_val = ((mSpiLeptonImg[i][j] - minval) * rgb_conv) / 64;
+        	//cout << "[" << idx << "] " << (int)rgb_val
+            mBufFrame[idx] = (char)rgb_val;
             ++idx;
             //fprintf(f,"%d ", lepton_image[i][j] - minval);
-        }
-
-        idx = 0;
+        }        
 
         /* second 80 pixels in row */
         for(int j = 0; j < 80; j++)
         {
-            mLastFrame[idx] = mSpiLeptonImg[i + 1][j] - minval;
+            rgb_val = ((mSpiLeptonImg[i+1][j] - minval) * rgb_conv) / 64;
+            //cout << "[" << idx << "] " << (int)rgb_val << endl;
+            mBufFrame[idx] = (char)rgb_val;
             ++idx;
             //fprintf(f,"%d ", lepton_image[i + 1][j] - minval);
         }
         //fprintf(f,"\n");
     }
     //fprintf(f,"\n\n");
+    
+    mFrameMutex.lock();
+    memcpy( mLastFrame, mBufFrame, FRAME_W*FRAME_H );
+    mFrameValid = true;
+    mFrameMutex.unlock();
 }
