@@ -7,6 +7,8 @@
 #include "LEPTON_RAD.h"
 bool _connected;
 
+#define KELVIN (-273.15f)
+
 LEP_CAMERA_PORT_DESC_T _port;
 LEP_SYS_FPA_TEMPERATURE_KELVIN_T fpa_temp_kelvin;
 LEP_RESULT result;
@@ -38,6 +40,7 @@ float raw2Celsius(float raw)
 {
 	float ambientTemperature = 25.0;
 	float slope = 0.0217;
+	
 	return slope*raw+ambientTemperature-177.77;
 }
 
@@ -57,14 +60,14 @@ int enable_radiometry( bool enable )
 		lepton_connect();
 	}
 	
-	LEP_RAD_ENABLE_E_PTR rad_status;
+	LEP_RAD_ENABLE_E rad_status;
 	
-	if( LEP_GetRadEnableState(&_port, rad_status ) != LEP_OK )
+	if( LEP_GetRadEnableState(&_port, (LEP_RAD_ENABLE_E_PTR)&rad_status ) != LEP_OK )
 		return -1;
 	
 	LEP_RAD_ENABLE_E new_status = enable?LEP_RAD_ENABLE:LEP_RAD_DISABLE;
 	
-	if( *rad_status != new_status )
+	if( rad_status != new_status )
 	{
 		if( LEP_SetRadEnableState(&_port, new_status ) != LEP_OK )
 			return -1;

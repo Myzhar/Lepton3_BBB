@@ -9,7 +9,7 @@
 //static const char *device = "/dev/spidev0.0";
 //uint8_t mode;
 //static uint8_t bits = 8;
-//static uint32_t speed = 20000000;
+//static uint32_t speed = 16000000;
 int snapshotCount = 0;
 int frame = 0;
 static int raw [120][160];
@@ -68,7 +68,7 @@ void LeptonThread::thread_func()
 	int ret = 0;
 	int fd = 0;
 	
-	fd = SpiOpenPort(mSpiDevice);
+	fd = SpiOpenPort(mSpiDevice,1);
 	
 	cout << "SPI fd: " << fd << endl;
 
@@ -127,9 +127,10 @@ void LeptonThread::thread_func()
 		cout << "Radiometry enabled" << endl;
 	}
 
+	int resets = 0;
 	while(true) 
 	{
-		int resets = 0;
+		
 		int segmentNumber = 0;
 		
 		cout << "0" << endl;
@@ -155,19 +156,21 @@ void LeptonThread::thread_func()
 					//cout << "*** Drop *** Packet: " << packetNumber << " - j:" << j << endl;
 					
 					j = -1;
-					resets += 1;
-					//usleep(1000);
-					continue;
+					resets++;
+					//usleep(1000);					
 					
 					if(resets == 1000) 
 					{
 						SpiClosePort(fd);
 						cout << "restarting spi..." << endl;
-						usleep(5000);
-						SpiOpenPort(mSpiDevice);
+						//usleep(5000);
+						usleep(185000);
+						SpiOpenPort(mSpiDevice,0);
 						
 						resets = 0;
 					}
+					
+					continue;
 				} 
 				else if(packetNumber == 20) 
 				{
@@ -182,12 +185,12 @@ void LeptonThread::thread_func()
 						//cout << "*** Drop *** SegmentNumber: " << segmentNumber << endl;
 						
 						j = -1;
-						//resets += 1;
-						//usleep(1000);
+						
+						resets++;
 					}
-				}			
+				}							
 			}		
-			usleep(10);
+			//usleep(10);
 			
 			if( mStop )
     		{
@@ -240,8 +243,11 @@ void LeptonThread::thread_func()
 		
 		cout << "2" << endl;
 		
-		std::cout << "T Min: " << raw2Celsius(minValue) <<" °C"<<std::endl;	
-		std::cout << "T Max: " << raw2Celsius(maxValue) <<" °C"<<std::endl;	
+		std::cout << "T Min: " << raw2Celsius(minValue) <<" °C - " << minValue << std::endl;	
+		std::cout << "T Max: " << raw2Celsius(maxValue) <<" °C - " << maxValue << std::endl;
+		//std::cout << "Min: " << minValue << std::endl;	
+		//std::cout << "Max: " << maxValue << std::endl;	
+			
 		float diff = maxValue - minValue;
 		float scale = 255/diff;
 		//QRgb color;

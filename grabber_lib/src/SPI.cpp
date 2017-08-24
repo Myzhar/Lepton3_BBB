@@ -7,7 +7,7 @@ unsigned int spi_speed = 20000000;
 
 using namespace std;
 
-int SpiOpenPort (std::string spi_device)
+int SpiOpenPort (std::string spi_device, int debug_out)
 {
 	int status_value = -1;
 	int spi_cs_fd;
@@ -25,7 +25,8 @@ int SpiOpenPort (std::string spi_device)
 
 	//----- SET SPI BUS SPEED -----
 		
-	cout << "Opening SPI device: " << spi_device << endl;
+	if( debug_out!=0 )
+		cout << "Opening SPI device: " << spi_device << endl;
 	spi_cs_fd = open(spi_device.c_str(), O_RDWR);
 
 	if (spi_cs_fd < 0)
@@ -48,7 +49,8 @@ int SpiOpenPort (std::string spi_device)
 		return -1;
 	}
 	
-	cout << "SPI mode: " << (int)spi_mode << endl;
+	if( debug_out!=0 )
+		cout << "SPI mode: " << (int)spi_mode << endl;
 
 	status_value = ioctl(spi_cs_fd, SPI_IOC_WR_BITS_PER_WORD, &spi_bitsPerWord);
 	if(status_value < 0)
@@ -64,7 +66,8 @@ int SpiOpenPort (std::string spi_device)
 		return -1;
 	}
 	
-	cout << "SPI bits per word: " << (int)spi_bitsPerWord << endl;
+	if( debug_out!=0 )
+		cout << "SPI bits per word: " << (int)spi_bitsPerWord << endl;
 
 	status_value = ioctl(spi_cs_fd, SPI_IOC_WR_MAX_SPEED_HZ, &spi_speed);
 	if(status_value < 0)
@@ -80,7 +83,8 @@ int SpiOpenPort (std::string spi_device)
 		return -1;
 	}
 	
-	cout << "SPI max speed: " << (int)spi_speed << endl;
+	if( debug_out!=0 )
+		cout << "SPI max speed: " << (int)spi_speed << endl;
 	
 	return(spi_cs_fd);
 }

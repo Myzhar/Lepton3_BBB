@@ -29,7 +29,7 @@ extern unsigned char spi_mode;
 extern unsigned char spi_bitsPerWord;
 extern unsigned int spi_speed;
 
-int SpiOpenPort(std::string spi_device);
+int SpiOpenPort(std::string spi_device, int debug_out);
 int SpiClosePort( int spi_fd );
 
 #endif
