@@ -245,7 +245,7 @@ the Free Software Foundation; either version 2 of the License.
 
 int L3_grabber::SpiTransfer(int fd)
 {
-	cout << "VoSPI transfer" << endl;
+	//cout << "VoSPI transfer" << endl;
 
     int ret;
     int i;
@@ -310,7 +310,7 @@ int L3_grabber::SpiTransfer(int fd)
             {
                 state = 1;
                 current_segment = segment;
-                cout << "new segment: " << (int)segment << endl;
+                //cout << "new segment: " << (int)segment << endl;
             }
         }
 
@@ -332,7 +332,7 @@ int L3_grabber::SpiTransfer(int fd)
         }
     }
 
-	cout << "mSpiStatusBits" << (int)mSpiStatusBits << endl;
+	//cout << "mSpiStatusBits" << (int)mSpiStatusBits << endl;
 
     return mSpiStatusBits;
 }
@@ -346,7 +346,7 @@ void L3_grabber::frameConvert()
     int rgb_val = 0;
     
 
-    printf("Calculating min/max values for proper scaling...\n");
+    //printf("Calculating min/max values for proper scaling...\n");
 
     for(int i = 0; i < 240; i++)
     {
@@ -366,8 +366,8 @@ void L3_grabber::frameConvert()
         }
     }
 
-    cout << "maxval = " << maxval << endl;
-    cout << "minval = " << minval << endl;
+    //cout << "maxval = " << maxval << endl;
+    //cout << "minval = " << minval << endl;
     
     rgb_conv = 16383 / (maxval - minval);
 
