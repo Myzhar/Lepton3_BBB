@@ -242,8 +242,8 @@ int main (int argc, char *argv[])
 #else
 			assert(h == 120);
 			assert(w == 160);
-			for(int i = 0; i < 120; i++) {
-				for(int j = 0; j < 160; j++) {
+			for(int i = 0; i < 118; i++) {
+				for(int j = 0; j < 158; j++) {
 					uint16_t val = iron_palette[data[i*160+j]>>1];
 					fbp[(i*2)*320+j*2] = val;
 					fbp[(i*2)*320+j*2+1] = val;
@@ -256,7 +256,7 @@ int main (int argc, char *argv[])
 			frameIdx++;
 		}
 		
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 	
 	grabber.stop();
