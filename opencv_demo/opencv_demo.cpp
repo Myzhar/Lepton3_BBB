@@ -4,7 +4,7 @@
 #include <string>
 #include <chrono>
 #include <thread>
-#include "LeptonThread.hpp"
+#include "Lepton3.hpp"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -36,9 +36,9 @@ int main (int argc, char *argv[])
     sigaction(SIGINT, &sigIntHandler, NULL);
     // <<<<< Enable Ctrl+C
 	
-	LeptonThread grabber;
+	Lepton3 lepton3;
 	
-	grabber.start();
+	lepton3.start();
 	
 	uint64_t frameIdx=0;
 	char image_name[32];
@@ -68,7 +68,7 @@ int main (int argc, char *argv[])
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 	
-	grabber.stop();
+	lepton3.stop();
 
     return EXIT_SUCCESS;
 }
