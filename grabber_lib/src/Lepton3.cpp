@@ -219,7 +219,11 @@ void Lepton3::thread_func()
 
 	while(true) 
 	{		
-        int segment = SpiReadSegment();
+            int segment = SpiReadSegment();
+	    if( mDebugLvl>=DBG_FULL )
+	    {
+	        cout << "Retrieved segment: " << segment << endl;
+	    }
 	}
 	
 	//finally, close SPI port just bcuz
