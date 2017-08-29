@@ -245,15 +245,27 @@ int main (int argc, char *argv[])
 			for(int i = 0; i < 118; i++) {
 				for(int j = 0; j < 158; j++) {
 					uint16_t val = iron_palette[data[i*160+j]>>1];
-					fbp[(i*2)*320+j*2] = val;
-					fbp[(i*2)*320+j*2+1] = val;
-					fbp[(i*2+1)*320+j*2] = val;
-					fbp[(i*2+1)*320+j*2+1] = val;
+					switch(frameIdx%4) {
+						default:
+						case 0:
+							fbp[(i*2)*320+j*2] = val;
+							break;
+						case 1:
+							fbp[(i*2)*320+j*2+1] = val;
+							break;
+						case 2:
+							fbp[(i*2+1)*320+j*2] = val;
+							break;
+						case 3:
+							fbp[(i*2+1)*320+j*2+1] = val;
+							break;
+					}
 				}
 			}
 #endif
 			
 			frameIdx++;
+			frameIdx = frameIdx % 1000000;
 		}
 		
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
