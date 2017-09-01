@@ -13,6 +13,8 @@
 
 #include "LEPTON_Types.h"
 
+#include "stopwatch.hpp"
+
 class Lepton3
 {
 public:
@@ -49,7 +51,7 @@ private:
     uint16_t* frameBuffer;
     uint8_t* grayBuffer;
 
-    float mSegmentFreq; //!< Segment output frequency
+    double mSegmentFreq; //!< Segment output frequency
     // <<<<< VoSPI
 
     // >>>>> Lepton control (CCI)
@@ -69,6 +71,8 @@ private:
     bool mStop;
 
     DebugLvl mDebugLvl;
+    
+    StopWatch mThreadWatch;
 };
 
 

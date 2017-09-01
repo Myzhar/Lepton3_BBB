@@ -57,7 +57,7 @@ Lepton3::~Lepton3()
 
 bool Lepton3::start()
 {
-    mThread = std::thread( &Lepton3::thread_func, this );
+    mThread = std::thread( &Lepton3::thread_func, this );    
 }
 
 void Lepton3::stop()
@@ -164,7 +164,7 @@ int Lepton3::SpiReadSegment()
     }
     
     // >>>>> Wait first packet
-    while(1)
+    /*while(1)
     {
     	if( mStop )
     	{
@@ -183,12 +183,12 @@ int Lepton3::SpiReadSegment()
     	if( mSpiResultBuf[1] == 0)
     		break;    	
     }
-    // <<<<< Wait first packet
+    // <<<<< Wait first packet */
 
     // >>>>> Segment reading
     int segmentSize = mPacketCount*mPacketSize;
 
-    if( read( mSpiFd, mSpiResultBuf+mPacketSize, segmentSize-1 ) != (segmentSize-1) )
+    if( read( mSpiFd, mSpiResultBuf+mPacketSize, segmentSize ) != (segmentSize) )
     {
         cerr << "Error reading full segment from SPI" << endl;
         return -1;
@@ -196,14 +196,14 @@ int Lepton3::SpiReadSegment()
     // <<<<< Segment reading 
     
        
-    for( int i=0; i<segmentSize/mPacketSize; i++ )
+    /*for( int i=0; i<segmentSize/mPacketSize; i++ )
     {
     	cout << (int)(mSpiResultBuf[i*mPacketSize+1]) << " ";
     	
     	if(i%20==0 && i!=0 )
     		cout << endl;
     }
-    cout << endl;
+    cout << endl;*/
 
     // >>>>> Segment ID
     // Segment ID is written in the 20th Packet int the bit 1-3 of the first byte (the first bit is always 0)
@@ -244,7 +244,14 @@ void Lepton3::thread_func()
         cout << "SPI fd: " << mSpiFd << endl;
 
 	while(true) 
-	{		
+	{
+		double elapsed = mThreadWatch.toc();
+		mThreadWatch.tic();
+		
+		int toWait = (int)((1/mSegmentFreq)*1000*1000)-elapsed;
+		
+		cout << endl << "Elapsed " << elapsed << " usec - Available: " << toWait << endl << endl;				
+		
         int segment = SpiReadSegment();
         
 	    if( mDebugLvl>=DBG_FULL )
@@ -264,7 +271,10 @@ void Lepton3::thread_func()
 	    }  
 	    
 	    //usleep(10000);
-	    //std::this_thread::sleep_for(std::chrono::microseconds(2000));
+	    if(toWait>0)
+	    {
+	    	std::this_thread::sleep_for(std::chrono::microseconds(toWait));
+	    }
 	    
 	    /*SpiClosePort();
 	    std::this_thread::sleep_for(std::chrono::microseconds(175000));
