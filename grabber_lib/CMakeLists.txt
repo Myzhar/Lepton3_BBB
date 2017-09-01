@@ -16,4 +16,6 @@ target_link_libraries (lepton3_grabber
 
 # Make sure the compiler can find include files for our Hello library
 # when other libraries or executables link to Hello
-target_include_directories (lepton3_grabber PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories (lepton3_grabber PUBLIC 
+	${CMAKE_CURRENT_SOURCE_DIR}/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Lepton_SDK/include)

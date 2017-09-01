@@ -41,8 +41,8 @@ private:
     unsigned char mSpiBits; //!< SPI bits per words
     unsigned int mSpiSpeed; //!< SPI max speed
 
-    uint8_t mFragmentCount; //!< VoSPI fragment for each segment
-    uint8_t mFragmentSize; //!< VoSPI fragment size in bytes
+    uint8_t mPacketCount; //!< VoSPI Packet for each segment
+    uint8_t mPacketSize; //!< VoSPI Packet size in bytes
     uint8_t mSegmentCount; //!< VoSPI segment for each frame
 
     uint8_t* mSpiResultBuf; //!< VoSPI read buffer for single segment
@@ -70,5 +70,7 @@ private:
 
     DebugLvl mDebugLvl;
 };
+
+
 
 #endif // LEPTONTHREAD

@@ -2,9 +2,9 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include <unistd.h>
 
-#include "Lepton_I2C.h"
 #include "LEPTON_SDK.h"
 #include "LEPTON_SYS.h"
 #include "LEPTON_AGC.h"
@@ -26,17 +26,16 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     mSpiBits = 8;
     mSpiSpeed = 20000000; // Max available SPI speed (according to Lepton3 datasheet)
 
-    mFragmentCount=60; // default no Telemetry
-    mFragmentSize=164; // default 14 bit raw data
+    mPacketCount=60; // default no Telemetry
+    mPacketSize=164; // default 14 bit raw data
     mSegmentCount=4; // 4 segments for each unique frame
 
     mSegmentFreq=106.0f; // According to datasheet each segment is ready at 106 Hz
 
-    mSpiResultBuf = new uint8_t[mFragmentCount*mFragmentSize];
+    mSpiResultBuf = new uint8_t[mPacketCount*mPacketSize];
     // <<<<< VoSPI
 
     // >>>>> CCI
-    mCciConnected = false;
     mCciPort = cciPort;
     // <<<<< CCI
 
@@ -82,7 +81,7 @@ bool Lepton3::SpiOpenPort( )
 
     if(mSpiFd < 0)
     {
-        cerr << "Error - Could not open SPI device: ") << mSpiDevice.c_str() << endl;
+        cerr << "Error - Could not open SPI device: " << mSpiDevice.c_str() << endl;
         return false;
     }
 
@@ -163,38 +162,65 @@ int Lepton3::SpiReadSegment()
         if( !SpiOpenPort() )
             return -1;
     }
+    
+    // >>>>> Wait first packet
+    while(1)
+    {
+    	if( mStop )
+    	{
+    		return -1;
+    	}
+    	
+    	if( read( mSpiFd, mSpiResultBuf, mPacketSize ) != mPacketSize )
+    	{
+        	cerr << "Error reading packet from SPI" << endl;
+        	return -1;
+    	}
+    	
+    	if( (mSpiResultBuf[0] & 0x0f) == 0x0f) // Packet not valid
+    		continue;
+    	
+    	if( mSpiResultBuf[1] == 0)
+    		break;    	
+    }
+    // <<<<< Wait first packet
 
     // >>>>> Segment reading
-    int segmentSize = mFragmentCount*mFragmentSize;
+    int segmentSize = mPacketCount*mPacketSize;
 
-    if( read( mSpiFd, mSpiResultBuf, segmentSize ) != segmentSize )
+    if( read( mSpiFd, mSpiResultBuf+mPacketSize, segmentSize-1 ) != (segmentSize-1) )
     {
         cerr << "Error reading full segment from SPI" << endl;
         return -1;
     }
-    // <<<<< Segment reading
+    // <<<<< Segment reading 
+    
+       
+    for( int i=0; i<segmentSize/mPacketSize; i++ )
+    {
+    	cout << (int)(mSpiResultBuf[i*mPacketSize+1]) << " ";
+    	
+    	if(i%20==0 && i!=0 )
+    		cout << endl;
+    }
+    cout << endl;
 
     // >>>>> Segment ID
-    // Segment ID is written in the 20th fragment int the bit 1-3 of the first byte (the first bit is always 0)
+    // Segment ID is written in the 20th Packet int the bit 1-3 of the first byte (the first bit is always 0)
     // Packet number is written in the bit 4-7 of the first byte
 
-    int pktNumber = (mSpiResultBuf[20*mFragmentSize] & 0x0F);
+    int pktNumber = (mSpiResultBuf[20*mPacketSize+1]);
     if( pktNumber!=20 )
     {
         if( mDebugLvl>=DBG_INFO )
         {
-            cout << "Wrong 20th fragment in segment" << endl;
-            return -1
+            cout << "Wrong 20th Packet in segment" << endl;
+            return -1;
         }
-    }
+    }       
 
-    int segmentID = (mSpiResultBuf[20*mFragmentSize] & 0x70) >> 4;
+    int segmentID = (mSpiResultBuf[20*mPacketSize] & 0x70) >> 4;
     // <<<<< Segment ID
-
-    if( mDebugLvl>=DBG_FULL )
-    {
-        cout << "Segment ID:" << segmentID << endl;
-    }
 
     return segmentID;
 }
@@ -219,11 +245,30 @@ void Lepton3::thread_func()
 
 	while(true) 
 	{		
-            int segment = SpiReadSegment();
+        int segment = SpiReadSegment();
+        
 	    if( mDebugLvl>=DBG_FULL )
 	    {
-	        cout << "Retrieved segment: " << segment << endl;
+	    	if( segment!=-1 )
+	    	{
+	        	cout << "Retrieved segment: " << segment << endl;
+	        }
 	    }
+	    
+	    if( mStop )
+	    {
+	    	if( mDebugLvl>=DBG_INFO )
+        		cout << "... grabber thread stopped ..." << endl;
+        		
+        	break;
+	    }  
+	    
+	    //usleep(10000);
+	    //std::this_thread::sleep_for(std::chrono::microseconds(2000));
+	    
+	    /*SpiClosePort();
+	    std::this_thread::sleep_for(std::chrono::microseconds(175000));
+	    SpiOpenPort();*/
 	}
 	
 	//finally, close SPI port just bcuz
@@ -290,7 +335,11 @@ bool Lepton3::lepton_perform_ffc()
             return false;
     }
 
-    if( lp_o LEP_RunSysFFCNormalization(mCciConnPort);
+    if( LEP_RunSysFFCNormalization(mCciConnPort) != LEP_OK )
+    {
+    	cerr << "Could not perform FFC Normalization" << endl;
+    	return false;
+    }
 }
 
 int Lepton3::enableRadiometry( bool enable )
