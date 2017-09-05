@@ -31,8 +31,21 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     mSegmentCount=4; // 4 segments for each unique frame
 
     mSegmentFreq=106.0f; // According to datasheet each segment is ready at 106 Hz
-
-    mSpiResultBuf = new uint8_t[mPacketCount*mPacketSize];
+    
+    mSpiBufSize=mPacketCount*mPacketSize;
+    mSpiResultBuf = new uint8_t[mSpiBufSize];
+    
+    
+    mSpiTR.tx_buf = (unsigned long)NULL;
+    mSpiTR.rx_buf = (unsigned long)mSpiResultBuf;
+    mSpiTR.len = mSpiBufSize;
+    mSpiTR.delay_usecs = 50;
+    mSpiTR.speed_hz = mSpiSpeed;
+    mSpiTR.bits_per_word = mSpiBits;
+	mSpiTR.cs_change = 1;
+	mSpiTR.tx_nbits = 0;
+    mSpiTR.rx_nbits = 0;
+    mSpiTR.pad = 0;   
     // <<<<< VoSPI
 
     // >>>>> CCI
@@ -164,18 +177,19 @@ int Lepton3::SpiReadSegment()
     }
     
     // >>>>> Wait first packet
-    /*while(1)
+    while(1)
     {
     	if( mStop )
     	{
     		return -1;
     	}
     	
-    	if( read( mSpiFd, mSpiResultBuf, mPacketSize ) != mPacketSize )
-    	{
-        	cerr << "Error reading packet from SPI" << endl;
-        	return -1;
-    	}
+    	int ret = ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
+	    if (ret == 1)
+	    {
+	        cerr << "Error reading full segment from SPI" << endl;
+            return -1;
+	    }
     	
     	if( (mSpiResultBuf[0] & 0x0f) == 0x0f) // Packet not valid
     		continue;
@@ -186,13 +200,17 @@ int Lepton3::SpiReadSegment()
     // <<<<< Wait first packet */
 
     // >>>>> Segment reading
-    int segmentSize = mPacketCount*mPacketSize;
-
-    if( read( mSpiFd, mSpiResultBuf+mPacketSize, segmentSize ) != (segmentSize) )
+    /*if( read( mSpiFd, mSpiResultBuf+mPacketSize, segmentSize ) != (segmentSize) )
     {
         cerr << "Error reading full segment from SPI" << endl;
         return -1;
-    }
+    }*/
+    int ret = ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
+	if (ret == 1)
+	{
+	    cerr << "Error reading full segment from SPI" << endl;
+        return -1;
+	}
     // <<<<< Segment reading 
     
        

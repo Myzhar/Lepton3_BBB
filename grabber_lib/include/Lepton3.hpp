@@ -48,10 +48,13 @@ private:
     uint8_t mSegmentCount; //!< VoSPI segment for each frame
 
     uint8_t* mSpiResultBuf; //!< VoSPI read buffer for single segment
+    uint32_t mSpiBufSize;
     uint16_t* frameBuffer;
     uint8_t* grayBuffer;
 
     double mSegmentFreq; //!< Segment output frequency
+    
+    struct spi_ioc_transfer mSpiTR;
     // <<<<< VoSPI
 
     // >>>>> Lepton control (CCI)
