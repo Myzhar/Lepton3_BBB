@@ -26,7 +26,7 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
 
     mSpiMode = SPI_MODE_3; // CPOL=1 (Clock Idle high level), CPHA=1 (SDO transmit/change edge idle to active)
     mSpiBits = 8;
-    mSpiSpeed = 20000000; // Max available SPI speed (according to Lepton3 datasheet)
+    mSpiSpeed = 32000000; // Max available SPI speed (according to Lepton3 datasheet)
 
     mPacketCount=60; // default no Telemetry
     mPacketSize=164; // default 14 bit raw data
@@ -165,67 +165,6 @@ void Lepton3::SpiClosePort()
     }
 }
 
-/*int Lepton3::SpiReadPacket()
-{
-    if( mSpiFd<0 )
-    {
-        if( mDebugLvl>=DBG_FULL )
-        {
-            cout << "SPI device not open. Trying to open it..." << endl;
-        }
-        if( !SpiOpenPort() )
-            return -1;
-    }
-    
-    // >>>>> Packet reading
-    mSpiTR.rx_buf = (unsigned long)(mSpiPackBuf);
-    mSpiTR.len = mPacketSize;
-	mSpiTR.cs_change = 0;
-    
-    static int pack_count=0;
-    
-    int ret = ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
-	if (ret == 1)
-	{
-	    cerr << "Error reading full packet from SPI" << endl;
-        return -1;
-	}
-    // <<<<< Packet reading
-    
-    pack_count++;
-    static int inv_count=0;    
-    
-    if( (mSpiPackBuf[0] & 0x0F) == 0x0F) // Packet not valid
-    {
-        if( inv_count==0 )
-            cout << endl;
-        cout << inv_count << " "; 
-        
-        inv_count++;
-    	return -1;
-   	}
-    	
-    inv_count=0;    
-    uint8_t packId = mSpiPackBuf[1];
-    
-    if( packId==0 )
-    {
-        cout << endl << "{" << pack_count << "} " << endl << endl;
-        pack_count=0;
-    }
-            
-    cout << (int)packId << " ";
-    
-    if( packId==20 )
-    {
-        uint8_t segmId = (mSpiPackBuf[0] & 0x70) >> 4;
-        cout << "[" << (int)segmId << "] " << bitset<8>(mSpiPackBuf[0]) << endl;
-    }        
-    
-    
-    return packId;
-}*/
-
 int Lepton3::SpiReadSegment()
 {
     if( mSpiFd<0 )
@@ -276,16 +215,6 @@ int Lepton3::SpiReadSegment()
         return -1;
 	}
     // <<<<< Segment reading 
-    
-       
-    /*for( int i=0; i<mSpiSegmBufSize/mPacketSize; i++ )
-    {
-    	cout << (int)(mSpiSegmBuf[i*mPacketSize+1]) << " ";
-    	
-    	if(i%21==0 && i!=0 )
-    		cout << endl;
-    }
-    cout << endl; //*/
 
     // >>>>> Segment ID
     // Segment ID is written in the 21th Packet int the bit 1-3 of the first byte (the first bit is always 0)
@@ -430,7 +359,9 @@ void Lepton3::thread_func()
 void Lepton3::resync()
 {
     if( mDebugLvl>=DBG_INFO )
-        cout << "... grabber thread finished" << endl;
+    {
+        cout << endl << "!!!!!!!!!!!!!!!!!!!! RESYNC !!!!!!!!!!!!!!!!!!!!" << endl;
+    }
         
     // >>>>> Resync
     uint8_t dummyBuf[5];

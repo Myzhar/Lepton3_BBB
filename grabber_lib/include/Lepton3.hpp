@@ -32,7 +32,6 @@ protected:
     bool SpiOpenPort(); //!< Opens VoSPI port
     void SpiClosePort(); //!< Closes VoSPI port
     int SpiReadSegment(); //!< Reads a VoSPI segment and returns its ID
-    //int SpiReadPacket(); //!< Reads a VoSPI segment and returns its ID
     void resync();
 
 public:
