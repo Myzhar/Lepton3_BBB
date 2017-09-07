@@ -10,13 +10,15 @@
 #include "LEPTON_AGC.h"
 #include "LEPTON_RAD.h"
 
+#include <bitset>
+
 #define KELVIN (-273.15f)
 
 using namespace std;
 
 Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
 	: mThread()
-    , mSpiResultBuf(NULL)
+    , mSpiSegmBuf(NULL)
 {
     // >>>>> VoSPI
 	mSpiDevice = spiDevice;	
@@ -32,17 +34,16 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
 
     mSegmentFreq=106.0f; // According to datasheet each segment is ready at 106 Hz
     
-    mSpiBufSize=mPacketCount*mPacketSize;
-    mSpiResultBuf = new uint8_t[mSpiBufSize];
+    mSpiSegmBufSize=mPacketCount*mPacketSize;
+    mSpiSegmBuf = new uint8_t[mSpiSegmBufSize];
     
-    
+    //mSpiPackBuf = new uint8_t[mPacketSize];
+        
     mSpiTR.tx_buf = (unsigned long)NULL;
-    mSpiTR.rx_buf = (unsigned long)mSpiResultBuf;
-    mSpiTR.len = mSpiBufSize;
     mSpiTR.delay_usecs = 50;
     mSpiTR.speed_hz = mSpiSpeed;
     mSpiTR.bits_per_word = mSpiBits;
-	mSpiTR.cs_change = 1;
+	mSpiTR.cs_change = 0;
 	mSpiTR.tx_nbits = 0;
     mSpiTR.rx_nbits = 0;
     mSpiTR.pad = 0;   
@@ -64,8 +65,8 @@ Lepton3::~Lepton3()
 {
 	stop();
 
-    if(mSpiResultBuf)
-        delete [] mSpiResultBuf;
+    if(mSpiSegmBuf)
+        delete [] mSpiSegmBuf;
 }
 
 bool Lepton3::start()
@@ -164,6 +165,67 @@ void Lepton3::SpiClosePort()
     }
 }
 
+/*int Lepton3::SpiReadPacket()
+{
+    if( mSpiFd<0 )
+    {
+        if( mDebugLvl>=DBG_FULL )
+        {
+            cout << "SPI device not open. Trying to open it..." << endl;
+        }
+        if( !SpiOpenPort() )
+            return -1;
+    }
+    
+    // >>>>> Packet reading
+    mSpiTR.rx_buf = (unsigned long)(mSpiPackBuf);
+    mSpiTR.len = mPacketSize;
+	mSpiTR.cs_change = 0;
+    
+    static int pack_count=0;
+    
+    int ret = ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
+	if (ret == 1)
+	{
+	    cerr << "Error reading full packet from SPI" << endl;
+        return -1;
+	}
+    // <<<<< Packet reading
+    
+    pack_count++;
+    static int inv_count=0;    
+    
+    if( (mSpiPackBuf[0] & 0x0F) == 0x0F) // Packet not valid
+    {
+        if( inv_count==0 )
+            cout << endl;
+        cout << inv_count << " "; 
+        
+        inv_count++;
+    	return -1;
+   	}
+    	
+    inv_count=0;    
+    uint8_t packId = mSpiPackBuf[1];
+    
+    if( packId==0 )
+    {
+        cout << endl << "{" << pack_count << "} " << endl << endl;
+        pack_count=0;
+    }
+            
+    cout << (int)packId << " ";
+    
+    if( packId==20 )
+    {
+        uint8_t segmId = (mSpiPackBuf[0] & 0x70) >> 4;
+        cout << "[" << (int)segmId << "] " << bitset<8>(mSpiPackBuf[0]) << endl;
+    }        
+    
+    
+    return packId;
+}*/
+
 int Lepton3::SpiReadSegment()
 {
     if( mSpiFd<0 )
@@ -176,8 +238,10 @@ int Lepton3::SpiReadSegment()
             return -1;
     }
     
-    // >>>>> Wait first packet
+    // >>>>> Wait first valid packet
     mSpiTR.cs_change = 0;
+    mSpiTR.rx_buf = (unsigned long)(mSpiSegmBuf); // First Packet has been read above
+    mSpiTR.len = mPacketSize;
     while(1)
     {
     	if( mStop )
@@ -192,22 +256,17 @@ int Lepton3::SpiReadSegment()
             return -1;
 	    }
     	
-    	if( (mSpiResultBuf[0] & 0x0f) == 0x0f) // Packet not valid
+    	if( (mSpiSegmBuf[0] & 0x0f) == 0x0f ) // Packet not valid
     		continue;
     	
-    	if( (mSpiResultBuf[0] & 0x0f) == 0) // First valid packet
+    	if( mSpiSegmBuf[1] == 0 ) // First valid packet
     		break;    	
     }
-    // <<<<< Wait first packet */
+    // <<<<< Wait first valid packet */
 
     // >>>>> Segment reading
-    /*if( read( mSpiFd, mSpiResultBuf+mPacketSize, segmentSize ) != (segmentSize) )
-    {
-        cerr << "Error reading full segment from SPI" << endl;
-        return -1;
-    }*/    
-    mSpiTR.rx_buf = (unsigned long)(mSpiResultBuf+mPacketSize); // First Packet has been read above
-    mSpiTR.len = mSpiBufSize-mPacketSize;
+    mSpiTR.rx_buf = (unsigned long)(mSpiSegmBuf+mPacketSize); // First Packet has been read above
+    mSpiTR.len = mSpiSegmBufSize-mPacketSize;
 	mSpiTR.cs_change = 0;
     
     int ret = ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
@@ -219,30 +278,36 @@ int Lepton3::SpiReadSegment()
     // <<<<< Segment reading 
     
        
-    /*for( int i=0; i<segmentSize/mPacketSize; i++ )
+    /*for( int i=0; i<mSpiSegmBufSize/mPacketSize; i++ )
     {
-    	cout << (int)(mSpiResultBuf[i*mPacketSize+1]) << " ";
+    	cout << (int)(mSpiSegmBuf[i*mPacketSize+1]) << " ";
     	
-    	if(i%20==0 && i!=0 )
+    	if(i%21==0 && i!=0 )
     		cout << endl;
     }
-    cout << endl;*/
+    cout << endl; //*/
 
     // >>>>> Segment ID
-    // Segment ID is written in the 20th Packet int the bit 1-3 of the first byte (the first bit is always 0)
+    // Segment ID is written in the 21th Packet int the bit 1-3 of the first byte (the first bit is always 0)
     // Packet number is written in the bit 4-7 of the first byte
 
-    int pktNumber = (mSpiResultBuf[20*mPacketSize+1]);
+    uint8_t pktNumber = mSpiSegmBuf[20*mPacketSize+1];
+    
+    if( mDebugLvl>=DBG_FULL )
+    {
+        cout << "{" << (int)pktNumber << "} ";
+    }
+    
     if( pktNumber!=20 )
     {
         if( mDebugLvl>=DBG_INFO )
         {
-            cout << "Wrong 20th Packet in segment" << endl;
+            cout << "Wrong Packet ID for TTT in segment" << endl;
             return -1;
         }
     }       
 
-    int segmentID = (mSpiResultBuf[20*mPacketSize] & 0x70) >> 4;
+    int segmentID = (mSpiSegmBuf[20*mPacketSize] & 0x70) >> 4;
     // <<<<< Segment ID
 
     return segmentID;
@@ -265,6 +330,9 @@ void Lepton3::thread_func()
 	
     if( mDebugLvl>=DBG_FULL )
         cout << "SPI fd: " << mSpiFd << endl;
+        
+    int notValidCount = 0;
+    int nextSegment = 1;
 
 	while(true) 
 	{
@@ -273,17 +341,65 @@ void Lepton3::thread_func()
 		
 		int toWait = (int)((1/mSegmentFreq)*1000*1000)-elapsed;
 		
-		cout << endl << "Elapsed " << elapsed << " usec - Available: " << toWait << endl << endl;				
+		cout << endl << "Elapsed " << elapsed << " usec - Available: " << toWait << endl << endl;	
 		
-        int segment = SpiReadSegment();
+		int segment = SpiReadSegment();        
+	    
+    	if( segment!=-1 )
+    	{
+    	    if( mDebugLvl>=DBG_FULL )
+    	    {
+    	        cout << "Retrieved segment: " << segment;
+    	    }
+    	    
+    	    if( segment != 0 )
+    	    {
+    	        if( mDebugLvl>=DBG_FULL )
+    	        {
+                    cout << " <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<";
+                }
+                
+    	        notValidCount=0;
+    	        
+    	        if(segment==nextSegment)
+    	        {
+    	            nextSegment++;
+    	        }
+    	        
+    	        if(nextSegment==5)
+    	        {
+    	            // FRAME COMPLETE
+    	            
+    	            if( mDebugLvl>=DBG_FULL )
+        	        {
+                        cout << endl << "************************ FRAME COMPLETE ************************" << endl;
+                    }
+    	        }
+    	    }
+        	else
+            {  
+                nextSegment=1;
+                notValidCount++;
+            }
+            
+            if( mDebugLvl>=DBG_FULL )
+    	    {
+                cout << endl; 
+            }
+        }
+        else
+        {
+            notValidCount++;
+        }
         
-	    if( mDebugLvl>=DBG_FULL )
-	    {
-	    	if( segment!=-1 )
-	    	{
-	        	cout << "Retrieved segment: " << segment << endl;
-	        }
-	    }
+        if( notValidCount>10 )
+        {
+            resync();
+            
+            notValidCount=0;
+        }
+	    
+	    //SpiReadPacket();
 	    
 	    if( mStop )
 	    {
@@ -294,10 +410,10 @@ void Lepton3::thread_func()
 	    }  
 	    
 	    //usleep(10000);
-	    if(toWait>0)
+	    /*if(toWait>0)
 	    {
 	    	std::this_thread::sleep_for(std::chrono::microseconds(toWait));
-	    }
+	    }//*/
 	    
 	    /*SpiClosePort();
 	    std::this_thread::sleep_for(std::chrono::microseconds(175000));
@@ -309,6 +425,24 @@ void Lepton3::thread_func()
 	
     if( mDebugLvl>=DBG_INFO )
         cout << "... grabber thread finished" << endl;
+}
+
+void Lepton3::resync()
+{
+    if( mDebugLvl>=DBG_INFO )
+        cout << "... grabber thread finished" << endl;
+        
+    // >>>>> Resync
+    uint8_t dummyBuf[5];
+    mSpiTR.rx_buf = (unsigned long)(dummyBuf); // First Packet has been read above
+    mSpiTR.len = 5;
+    mSpiTR.cs_change = 1; // Force deselect after "ioctl"
+
+    ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );     
+    
+    // Keeps /CS High for 185 msec according to datasheet
+    std::this_thread::sleep_for(std::chrono::microseconds(185000));  
+    // <<<<< Resync
 }
 
 bool Lepton3::CciConnect()

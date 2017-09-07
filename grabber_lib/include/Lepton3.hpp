@@ -32,6 +32,8 @@ protected:
     bool SpiOpenPort(); //!< Opens VoSPI port
     void SpiClosePort(); //!< Closes VoSPI port
     int SpiReadSegment(); //!< Reads a VoSPI segment and returns its ID
+    //int SpiReadPacket(); //!< Reads a VoSPI segment and returns its ID
+    void resync();
 
 public:
 
@@ -47,8 +49,9 @@ private:
     uint8_t mPacketSize; //!< VoSPI Packet size in bytes
     uint8_t mSegmentCount; //!< VoSPI segment for each frame
 
-    uint8_t* mSpiResultBuf; //!< VoSPI read buffer for single segment
-    uint32_t mSpiBufSize;
+    uint8_t* mSpiSegmBuf; //!< VoSPI read buffer for single segment
+    uint32_t mSpiSegmBufSize; //!< Size of the buffer for single segment
+    //uint8_t* mSpiPackBuf; //!< VoSPI read buffer for single packet
     uint16_t* frameBuffer;
     uint8_t* grayBuffer;
 
