@@ -26,6 +26,11 @@ $ cd build
 $ cmake ..
 $ make
 ```
+## Full performances
+To be sure to acquire every available frame set the CPU of the BeagleBone Blue to max speed:
+```
+$rc_cpu_freq -s 1000
+```
 
 
 
