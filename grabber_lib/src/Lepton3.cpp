@@ -177,6 +177,7 @@ int Lepton3::SpiReadSegment()
     }
     
     // >>>>> Wait first packet
+    mSpiTR.cs_change = 0;
     while(1)
     {
     	if( mStop )
@@ -194,7 +195,7 @@ int Lepton3::SpiReadSegment()
     	if( (mSpiResultBuf[0] & 0x0f) == 0x0f) // Packet not valid
     		continue;
     	
-    	if( mSpiResultBuf[1] == 0)
+    	if( (mSpiResultBuf[0] & 0x0f) == 0) // First valid packet
     		break;    	
     }
     // <<<<< Wait first packet */
@@ -204,7 +205,11 @@ int Lepton3::SpiReadSegment()
     {
         cerr << "Error reading full segment from SPI" << endl;
         return -1;
-    }*/
+    }*/    
+    mSpiTR.rx_buf = (unsigned long)(mSpiResultBuf+mPacketSize); // First Packet has been read above
+    mSpiTR.len = mSpiBufSize-mPacketSize;
+	mSpiTR.cs_change = 0;
+    
     int ret = ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
 	if (ret == 1)
 	{
