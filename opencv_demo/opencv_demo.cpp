@@ -4,7 +4,7 @@
 #include <string>
 #include <chrono>
 #include <thread>
-#include "lepton3_grabber.hpp"
+#include "Lepton3.hpp"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -36,9 +36,9 @@ int main (int argc, char *argv[])
     sigaction(SIGINT, &sigIntHandler, NULL);
     // <<<<< Enable Ctrl+C
 	
-	L3_grabber grabber;
+	Lepton3 lepton3;
 	
-	grabber.start();
+	lepton3.start();
 	
 	uint64_t frameIdx=0;
 	char image_name[32];
@@ -48,7 +48,7 @@ int main (int argc, char *argv[])
 		int w;
 		int h;
 		
-		const char* data = grabber.getLastFrame( &w, &h );
+		/*const char* data = grabber.getLastFrame( &w, &h );
 		
 		if( data && w!=-1 && h!=-1 )
 		{
@@ -63,12 +63,12 @@ int main (int argc, char *argv[])
 			cout << "Saved: " << image_name << "[" << w << "x" << h << "]" << endl;
 			
 			frameIdx++;
-		}
+		}*/
 		
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 	
-	grabber.stop();
+	lepton3.stop();
 
     return EXIT_SUCCESS;
 }
