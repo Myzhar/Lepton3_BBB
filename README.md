@@ -13,9 +13,9 @@ Search for the following line:
 cmdline=coherent_pool=1M net.ifnames=0 quiet cape_universal=enable
 ```
 add ``` spidev.bufsiz=20480 ```
-at the end of the line, like this:
+at the end of the line, e.g.:
 ```
-cmdline=coherent_pool=1M net.ifnames=0 quiet cape_universal=enable spidev.bufsiz=131072
+cmdline=coherent_pool=1M net.ifnames=0 quiet cape_universal=enable spidev.bufsiz=20480
 ```
 Save, exit and reboot
 
@@ -27,9 +27,9 @@ $ cmake ..
 $ make
 ```
 ## Full performances
-To be sure to acquire every available frame set the CPU of the BeagleBone Blue to max speed:
+To be sure to acquire every available frame set the CPU of the BeagleBone Blue to max speed using the command ```rc_cpu_freq```  by *Robotics Cape SDK*:
 ```
-$rc_cpu_freq -s 1000
+$ rc_cpu_freq -s 1000
 ```
 
 
