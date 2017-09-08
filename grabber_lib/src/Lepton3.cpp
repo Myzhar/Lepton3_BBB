@@ -17,11 +17,11 @@
 using namespace std;
 
 Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
-	: mThread()
-    , mSpiSegmBuf(NULL)
+    : mThread()
+    , mSpiRawFrameBuf(NULL)
 {
     // >>>>> VoSPI
-	mSpiDevice = spiDevice;	
+    mSpiDevice = spiDevice;
     mSpiFd = -1;
 
     mSpiMode = SPI_MODE_3; // CPOL=1 (Clock Idle high level), CPHA=1 (SDO transmit/change edge idle to active)
@@ -34,19 +34,19 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
 
     mSegmentFreq=106.0f; // According to datasheet each segment is ready at 106 Hz
     
-    mSpiSegmBufSize=mPacketCount*mPacketSize;
-    mSpiSegmBuf = new uint8_t[mSpiSegmBufSize];
-    
-    //mSpiPackBuf = new uint8_t[mPacketSize];
-        
+    mSegmSize=mPacketCount*mPacketSize;
+    mSpiRawFrameBufSize=mSegmSize*mSegmentCount;
+
+    mSpiRawFrameBuf = new uint8_t[mSpiRawFrameBufSize];
+
     mSpiTR.tx_buf = (unsigned long)NULL;
     mSpiTR.delay_usecs = 50;
     mSpiTR.speed_hz = mSpiSpeed;
     mSpiTR.bits_per_word = mSpiBits;
-	mSpiTR.cs_change = 0;
-	mSpiTR.tx_nbits = 0;
+    mSpiTR.cs_change = 0;
+    mSpiTR.tx_nbits = 0;
     mSpiTR.rx_nbits = 0;
-    mSpiTR.pad = 0;   
+    mSpiTR.pad = 0;
     // <<<<< VoSPI
 
     // >>>>> CCI
@@ -58,25 +58,25 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     if( mDebugLvl>=DBG_INFO )
         cout << "Debug level: " << mDebugLvl << endl;
 
-	mStop = false;
+    mStop = false;
 }
 
 Lepton3::~Lepton3()
 {
-	stop();
+    stop();
 
-    if(mSpiSegmBuf)
-        delete [] mSpiSegmBuf;
+    if(mSpiRawFrameBuf)
+        delete [] mSpiRawFrameBuf;
 }
 
 bool Lepton3::start()
 {
-    mThread = std::thread( &Lepton3::thread_func, this );    
+    mThread = std::thread( &Lepton3::thread_func, this );
 }
 
 void Lepton3::stop()
 {
-	mStop = true;
+    mStop = true;
 
     if(mThread.joinable())
     {
@@ -176,51 +176,71 @@ int Lepton3::SpiReadSegment()
         if( !SpiOpenPort() )
             return -1;
     }
+
+    /**********************************************************************************************
+    1) Calculate the address of the segment buffer in the "full frame" buffer [mSpiFrameBuf]
+    **********************************************************************************************/
+    uint8_t* segmentAddr = mSpiRawFrameBuf+(mCurrSegm*mSegmSize);
     
+    /**********************************************************************************************
+    2) Wait for the first valid packet
+       [Packet Header (16 bit) not equal to xFxx and Packet ID equal to 0]
+    **********************************************************************************************/
+
     // >>>>> Wait first valid packet
     mSpiTR.cs_change = 0;
-    mSpiTR.rx_buf = (unsigned long)(mSpiSegmBuf); // First Packet has been read above
+    mSpiTR.rx_buf = (unsigned long)(segmentAddr); // First Packet has been read above
     mSpiTR.len = mPacketSize;
     while(1)
     {
-    	if( mStop )
-    	{
-    		return -1;
-    	}
-    	
-    	int ret = ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
-	    if (ret == 1)
-	    {
-	        cerr << "Error reading full segment from SPI" << endl;
+        if( mStop )
+        {
             return -1;
-	    }
-    	
-    	if( (mSpiSegmBuf[0] & 0x0f) == 0x0f ) // Packet not valid
-    		continue;
-    	
-    	if( mSpiSegmBuf[1] == 0 ) // First valid packet
-    		break;    	
+        }
+
+        int ret = ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
+        if (ret == 1)
+        {
+            cerr << "Error reading full segment from SPI" << endl;
+            return -1;
+        }
+
+        if( (segmentAddr[0] & 0x0f) == 0x0f ) // Packet not valid
+            continue;
+
+        if( segmentAddr[1] == 0 ) // First valid packet
+            break;
     }
     // <<<<< Wait first valid packet */
 
+    /**********************************************************************************************
+    // 3) Read the full segment
+          Note: the packet #0 has been read at step 2, so the number of packets to be read must
+                be decreased by a packet size and buffer address must be shifted of a packet size
+    **********************************************************************************************/
+
     // >>>>> Segment reading
-    mSpiTR.rx_buf = (unsigned long)(mSpiSegmBuf+mPacketSize); // First Packet has been read above
-    mSpiTR.len = mSpiSegmBufSize-mPacketSize;
-	mSpiTR.cs_change = 0;
+    mSpiTR.rx_buf = (unsigned long)(segmentAddr+mPacketSize); // First Packet has been read above
+    mSpiTR.len = mSegmSize-mPacketSize;
+    mSpiTR.cs_change = 0; // /CS asserted after "ioctl"
     
     int ret = ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
-	if (ret == 1)
-	{
-	    cerr << "Error reading full segment from SPI" << endl;
+    if (ret == 1)
+    {
+        cerr << "Error reading full segment from SPI" << endl;
         return -1;
-	}
-    // <<<<< Segment reading 
+    }
+    // <<<<< Segment reading
+
+    /**********************************************************************************************
+    // 4) Get the Segment ID from packet #20 (21th packet)
+    **********************************************************************************************/
 
     // >>>>> Segment ID
     // Segment ID is written in the 21th Packet int the bit 1-3 of the first byte (the first bit is always 0)
     // Packet number is written in the bit 4-7 of the first byte
 
-    uint8_t pktNumber = mSpiSegmBuf[20*mPacketSize+1];
+    uint8_t pktNumber = segmentAddr[20*mPacketSize+1];
     
     if( mDebugLvl>=DBG_FULL )
     {
@@ -232,11 +252,12 @@ int Lepton3::SpiReadSegment()
         if( mDebugLvl>=DBG_INFO )
         {
             cout << "Wrong Packet ID for TTT in segment" << endl;
-            return -1;
         }
-    }       
 
-    int segmentID = (mSpiSegmBuf[20*mPacketSize] & 0x70) >> 4;
+        return -1;
+    }
+
+    int segmentID = (segmentAddr[20*mPacketSize] & 0x70) >> 4;
     // <<<<< Segment ID
 
     return segmentID;
@@ -246,112 +267,171 @@ void Lepton3::thread_func()
 {
     if( mDebugLvl>=DBG_INFO )
         cout << "Grabber thread started ..." << endl;
-	
+
     mStop = false;
-	
+
     int ret = 0;
-	
+
     if( !SpiOpenPort() )
     {
         cerr << "Grabber thread stopped on starting for SPI error" << endl;
         return;
     }
-	
+
     if( mDebugLvl>=DBG_FULL )
         cout << "SPI fd: " << mSpiFd << endl;
-        
-    int notValidCount = 0;
-    int nextSegment = 1;
 
-	while(true) 
-	{
-		double elapsed = mThreadWatch.toc();
-		mThreadWatch.tic();
-		
-		int toWait = (int)((1/mSegmentFreq)*1000*1000)-elapsed;
-		
-		cout << endl << "Elapsed " << elapsed << " usec - Available: " << toWait << endl << endl;	
-		
-		int segment = SpiReadSegment();        
-	    
-    	if( segment!=-1 )
-    	{
-    	    if( mDebugLvl>=DBG_FULL )
-    	    {
-    	        cout << "Retrieved segment: " << segment;
-    	    }
-    	    
-    	    if( segment != 0 )
-    	    {
-    	        if( mDebugLvl>=DBG_FULL )
-    	        {
+    int notValidCount = 0;
+    mCurrSegm = -1;
+
+    mThreadWatch.tic();
+
+    StopWatch testTime1, testTime2;
+
+    mDataValid = false;
+
+    while(true)
+    {
+        // >>>>> Timing info
+        double threadPeriod = mThreadWatch.toc(); // Get thread by thread time
+        mThreadWatch.tic();
+
+        int usecAvail = (int)((1/mSegmentFreq)*1000*1000)-threadPeriod;
+
+        if( mDebugLvl>=DBG_FULL )
+        {
+            cout << endl << "Thread period: " << threadPeriod << " usec - VoSPI Available: " << usecAvail << " usec" << endl;
+        }
+
+        if( mDebugLvl>=DBG_INFO )
+        {
+            cout << "VoSPI segment acquire freq: " << (1000.0*1000.0)/threadPeriod << " hz" << endl;
+        }
+        // <<<<< Timing info
+
+        // >>>>> Acquire single segment
+        if( mDebugLvl>=DBG_FULL )
+        {
+            testTime1.tic();
+        }
+
+        int segment = SpiReadSegment();
+
+        if( mDebugLvl>=DBG_FULL )
+        {
+            double elapsed = testTime1.toc();
+            cout << "VoSPI segment read time " << elapsed << " usec" << endl;
+        }
+        // <<<<< Acquire single segment
+
+        // >>>>> Segment check
+        if( mDebugLvl>=DBG_FULL )
+        {
+            testTime1.tic();
+        }
+
+        if( segment!=-1 )
+        {
+            if( mDebugLvl>=DBG_FULL )
+            {
+                cout << "Retrieved segment: " << segment;
+            }
+
+            if( segment != 0 )
+            {
+                if( mDebugLvl>=DBG_FULL )
+                {
                     cout << " <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<";
                 }
                 
-    	        notValidCount=0;
-    	        
-    	        if(segment==nextSegment)
-    	        {
-    	            nextSegment++;
-    	        }
-    	        
-    	        if(nextSegment==5)
-    	        {
-    	            // FRAME COMPLETE
-    	            
-    	            if( mDebugLvl>=DBG_FULL )
-        	        {
+                notValidCount=0;
+
+                if( segment==(mCurrSegm+1) )
+                {
+                    mCurrSegm=segment;
+                }
+
+                if(mCurrSegm==4)
+                {
+                    // Start a new frame
+                    mCurrSegm = -1;
+
+                    // FRAME COMPLETE
+
+                    if( mDebugLvl>=DBG_FULL )
+                    {
                         cout << endl << "************************ FRAME COMPLETE ************************" << endl;
                     }
-    	        }
-    	    }
-        	else
-            {  
-                nextSegment=1;
+
+                    // >>>>> RAW to 16bit data conversion
+                    if( mDebugLvl>=DBG_FULL )
+                    {
+                        testTime2.tic();
+                    }
+
+                    raw2data();
+
+                    if( mDebugLvl>=DBG_FULL )
+                    {
+                        double elapsed = testTime2.toc();
+                        cout << "VoSPI frame conversion time " << elapsed << " usec" << endl;
+                    }
+
+                    mDataValid = true;
+                    // <<<<< RAW to 16bit data conversion
+                }
+            }
+            else
+            {
+                // Frame abort
+                // Start a new frame
+                mCurrSegm = -1;
+
                 notValidCount++;
             }
             
             if( mDebugLvl>=DBG_FULL )
-    	    {
-                cout << endl; 
+            {
+                cout << endl;
             }
         }
         else
         {
+            // Frame abort
+            // Start a new frame
+            mCurrSegm = -1;
+
             notValidCount++;
         }
+
+        if( mDebugLvl>=DBG_FULL )
+        {
+            double elapsed = testTime1.toc();
+            cout << "VoSPI segment check time " << elapsed << " usec" << endl;
+        }
+        // <<<<< Segment check
         
-        if( notValidCount>10 )
+        // According to datasheet, after 4 valid segments (ID 1,2,3,4) we should read 8 not valid segments (ID 0)
+        // If the number of not valid segments is higher than 8 we need to resync the host with the device
+        if( notValidCount>=10 )
         {
             resync();
             
             notValidCount=0;
         }
-	    
-	    //SpiReadPacket();
-	    
-	    if( mStop )
-	    {
-	    	if( mDebugLvl>=DBG_INFO )
-        		cout << "... grabber thread stopped ..." << endl;
-        		
-        	break;
-	    }  
-	    
-	    //usleep(10000);
-	    /*if(toWait>0)
-	    {
-	    	std::this_thread::sleep_for(std::chrono::microseconds(toWait));
-	    }//*/
-	    
-	    /*SpiClosePort();
-	    std::this_thread::sleep_for(std::chrono::microseconds(175000));
-	    SpiOpenPort();*/
-	}
-	
-	//finally, close SPI port just bcuz
+
+        if( mStop )
+        {
+            if( mDebugLvl>=DBG_INFO )
+                cout << "... grabber thread stopped ..." << endl;
+
+            break;
+        }
+    }
+
+    //finally, close SPI port just bcuz
     SpiClosePort();
-	
+
     if( mDebugLvl>=DBG_INFO )
         cout << "... grabber thread finished" << endl;
 }
@@ -362,17 +442,17 @@ void Lepton3::resync()
     {
         cout << endl << "!!!!!!!!!!!!!!!!!!!! RESYNC !!!!!!!!!!!!!!!!!!!!" << endl;
     }
-        
+
     // >>>>> Resync
     uint8_t dummyBuf[5];
     mSpiTR.rx_buf = (unsigned long)(dummyBuf); // First Packet has been read above
     mSpiTR.len = 5;
     mSpiTR.cs_change = 1; // Force deselect after "ioctl"
 
-    ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );     
+    ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
     
     // Keeps /CS High for 185 msec according to datasheet
-    std::this_thread::sleep_for(std::chrono::microseconds(185000));  
+    std::this_thread::sleep_for(std::chrono::microseconds(185000));
     // <<<<< Resync
 }
 
@@ -435,8 +515,8 @@ bool Lepton3::lepton_perform_ffc()
 
     if( LEP_RunSysFFCNormalization(mCciConnPort) != LEP_OK )
     {
-    	cerr << "Could not perform FFC Normalization" << endl;
-    	return false;
+        cerr << "Could not perform FFC Normalization" << endl;
+        return false;
     }
 }
 
@@ -461,4 +541,53 @@ int Lepton3::enableRadiometry( bool enable )
     }
 
     return new_status;
+}
+
+void Lepton3::raw2data()
+{
+    int wordCount = mSpiRawFrameBufSize/2;
+    int wordPackSize = mPacketSize/2;
+
+    uint16_t minValue = 65535;
+    uint16_t maxValue = 0;
+
+    for(int i=0; i<wordCount; i++)
+    {
+        //skip the first 2 uint16_t's of every packet, they're 4 header bytes
+        if(i % wordPackSize < 2)
+        {
+            continue;
+        }
+
+        // >>>>> Flip the MSB and LSB
+        int temp = mSpiRawFrameBuf[i*2];
+        mSpiRawFrameBuf[i*2] = mSpiRawFrameBuf[i*2+1];
+        mSpiRawFrameBuf[i*2+1] = temp;
+        // <<<<< Flip the MSB and LSB
+
+        uint16_t value = ((uint16_t*)mSpiRawFrameBuf)[i];
+
+        if(value> maxValue)
+        {
+            maxValue = value;
+        }
+
+        if(value < minValue)
+        {
+            if(value != 0)
+                minValue = value;
+        }
+
+        mDataFrameBuf[1] = value;
+    }
+}
+
+unsigned short* Lepton3::getLastFrame(  )
+{
+    if( !mDataValid )
+        return NULL;
+
+    mDataValid = false;
+
+    return mDataFrameBuf;
 }

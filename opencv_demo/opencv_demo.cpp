@@ -7,6 +7,7 @@
 #include "Lepton3.hpp"
 
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
 using namespace std;
@@ -36,36 +37,37 @@ int main (int argc, char *argv[])
     sigaction(SIGINT, &sigIntHandler, NULL);
     // <<<<< Enable Ctrl+C
 	
-	Lepton3 lepton3;
-	
+    Lepton3 lepton3( "/dev/spidev1.0", 1, Lepton3::DBG_FULL );
 	lepton3.start();
 	
 	uint64_t frameIdx=0;
 	char image_name[32];
 	
 	while(!close)
-	{
-		int w;
-		int h;
+    {
 		
-		/*const char* data = grabber.getLastFrame( &w, &h );
+        unsigned short* data = lepton3.getLastFrame( );
 		
-		if( data && w!=-1 && h!=-1 )
+        if( data )
 		{
-			sprintf(image_name, "IMG_%.6d.jpg", frameIdx);
+            sprintf(image_name, "IMG_%.6lu.jpg", frameIdx);
 			string imgStr = image_name;
 			
-			cv::Mat frame( h,w, CV_8UC1 );
-			memcpy( frame.data, data, w*h );
+            cv::Mat frame16( 120, 160, CV_16UC1 );
+
+            memcpy( frame16.data, data, 160*120 );
+
+            cv::Mat frame8;
+            frame16.convertTo( frame8, CV_8UC1, 1./256. );
+
+            cv::normalize( frame8, frame8, 1, 0, cv::NORM_MINMAX );
 			
-			cv::imwrite( image_name, frame );
-			
-			cout << "Saved: " << image_name << "[" << w << "x" << h << "]" << endl;
+            cv::imwrite( imgStr, frame8 );
 			
 			frameIdx++;
-		}*/
+        }
 		
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	}
 	
 	lepton3.stop();
