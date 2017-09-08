@@ -37,34 +37,48 @@ int main (int argc, char *argv[])
     sigaction(SIGINT, &sigIntHandler, NULL);
     // <<<<< Enable Ctrl+C
 	
-    Lepton3 lepton3( "/dev/spidev1.0", 1, Lepton3::DBG_FULL );
+	Lepton3::DebugLvl deb_lvl = Lepton3::DBG_NONE;
+	
+	if( argc == 2 )
+	{
+	    int dbg = atoi(argv[3]);
+	    
+	    if( dbg < Lepton3::DBG_FULL )
+	    {
+	        deb_lvl = static_cast<Lepton3::DebugLvl>(dbg);
+	    }
+	}
+	
+    Lepton3 lepton3( "/dev/spidev1.0", 1, deb_lvl );
 	lepton3.start();
 	
 	uint64_t frameIdx=0;
 	char image_name[32];
 	
 	while(!close)
-    {
-		
+    {		
         unsigned short* data = lepton3.getLastFrame( );
 		
         if( data )
 		{
-            sprintf(image_name, "IMG_%.6lu.jpg", frameIdx);
+            sprintf(image_name, "IMG_%.6lu.png", frameIdx);
 			string imgStr = image_name;
 			
-            cv::Mat frame16( 120, 160, CV_16UC1 );
+            cv::Mat frame16( 120, 160, CV_16UC1, data );
 
-            memcpy( frame16.data, data, 160*120 );
+            //memcpy( frame16.data, data, 160*120 );
 
             cv::Mat frame8;
-            frame16.convertTo( frame8, CV_8UC1, 1./256. );
-
-            cv::normalize( frame8, frame8, 1, 0, cv::NORM_MINMAX );
+            //cv::normalize( frame16, frame16, 1, 0, cv::NORM_MINMAX );
+            frame16.convertTo( frame8, CV_8UC1, 1./256. );   
+            
+            //cout << frame8 << endl;         
 			
-            cv::imwrite( imgStr, frame8 );
+            cv::imwrite( imgStr, frame8 );//*/
 			
 			frameIdx++;
+			
+			cout << "> " << imgStr << endl;
         }
 		
         std::this_thread::sleep_for(std::chrono::milliseconds(50));

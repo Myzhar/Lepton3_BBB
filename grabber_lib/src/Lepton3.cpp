@@ -38,6 +38,8 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     mSpiRawFrameBufSize=mSegmSize*mSegmentCount;
 
     mSpiRawFrameBuf = new uint8_t[mSpiRawFrameBufSize];
+    
+    mDataFrameBuf = new uint16_t[160*120];
 
     mSpiTR.tx_buf = (unsigned long)NULL;
     mSpiTR.delay_usecs = 50;
@@ -67,6 +69,9 @@ Lepton3::~Lepton3()
 
     if(mSpiRawFrameBuf)
         delete [] mSpiRawFrameBuf;
+        
+    if(mDataFrameBuf)
+        delete [] mDataFrameBuf;
 }
 
 bool Lepton3::start()
@@ -177,15 +182,15 @@ int Lepton3::SpiReadSegment()
             return -1;
     }
 
-    /**********************************************************************************************
+    /*********************************************************************************************
     1) Calculate the address of the segment buffer in the "full frame" buffer [mSpiFrameBuf]
-    **********************************************************************************************/
+    *********************************************************************************************/
     uint8_t* segmentAddr = mSpiRawFrameBuf+(mCurrSegm*mSegmSize);
     
-    /**********************************************************************************************
+    /*********************************************************************************************
     2) Wait for the first valid packet
        [Packet Header (16 bit) not equal to xFxx and Packet ID equal to 0]
-    **********************************************************************************************/
+    *********************************************************************************************/
 
     // >>>>> Wait first valid packet
     mSpiTR.cs_change = 0;
@@ -213,11 +218,11 @@ int Lepton3::SpiReadSegment()
     }
     // <<<<< Wait first valid packet */
 
-    /**********************************************************************************************
+    /*********************************************************************************************
     // 3) Read the full segment
           Note: the packet #0 has been read at step 2, so the number of packets to be read must
                 be decreased by a packet size and buffer address must be shifted of a packet size
-    **********************************************************************************************/
+    *********************************************************************************************/
 
     // >>>>> Segment reading
     mSpiTR.rx_buf = (unsigned long)(segmentAddr+mPacketSize); // First Packet has been read above
@@ -232,12 +237,13 @@ int Lepton3::SpiReadSegment()
     }
     // <<<<< Segment reading
 
-    /**********************************************************************************************
+    /*********************************************************************************************
     // 4) Get the Segment ID from packet #20 (21th packet)
-    **********************************************************************************************/
+    *********************************************************************************************/
 
     // >>>>> Segment ID
-    // Segment ID is written in the 21th Packet int the bit 1-3 of the first byte (the first bit is always 0)
+    // Segment ID is written in the 21th Packet int the bit 1-3 of the first byte 
+    // (the first bit is always 0)
     // Packet number is written in the bit 4-7 of the first byte
 
     uint8_t pktNumber = segmentAddr[20*mPacketSize+1];
@@ -282,7 +288,7 @@ void Lepton3::thread_func()
         cout << "SPI fd: " << mSpiFd << endl;
 
     int notValidCount = 0;
-    mCurrSegm = -1;
+    mCurrSegm = 0;
 
     mThreadWatch.tic();
 
@@ -354,7 +360,7 @@ void Lepton3::thread_func()
                 if(mCurrSegm==4)
                 {
                     // Start a new frame
-                    mCurrSegm = -1;
+                    mCurrSegm = 0;
 
                     // FRAME COMPLETE
 
@@ -379,13 +385,13 @@ void Lepton3::thread_func()
 
                     mDataValid = true;
                     // <<<<< RAW to 16bit data conversion
-                }
+                }                
             }
             else
             {
                 // Frame abort
                 // Start a new frame
-                mCurrSegm = -1;
+                mCurrSegm = 0;
 
                 notValidCount++;
             }
@@ -398,8 +404,7 @@ void Lepton3::thread_func()
         else
         {
             // Frame abort
-            // Start a new frame
-            mCurrSegm = -1;
+            mCurrSegm = 0;
 
             notValidCount++;
         }
@@ -551,6 +556,7 @@ void Lepton3::raw2data()
     uint16_t minValue = 65535;
     uint16_t maxValue = 0;
 
+    int pixIdx = 0;
     for(int i=0; i<wordCount; i++)
     {
         //skip the first 2 uint16_t's of every packet, they're 4 header bytes
@@ -566,6 +572,8 @@ void Lepton3::raw2data()
         // <<<<< Flip the MSB and LSB
 
         uint16_t value = ((uint16_t*)mSpiRawFrameBuf)[i];
+        
+        cout << value << " ";
 
         if(value> maxValue)
         {
@@ -578,8 +586,13 @@ void Lepton3::raw2data()
                 minValue = value;
         }
 
-        mDataFrameBuf[1] = value;
+        mDataFrameBuf[pixIdx] = value;
+        pixIdx++;
     }
+    
+    cout << endl << "---------------------------------------------------" << endl;
+    
+    // cout << pixIdx << endl;
 }
 
 unsigned short* Lepton3::getLastFrame(  )
