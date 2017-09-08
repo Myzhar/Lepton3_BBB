@@ -41,11 +41,22 @@ int main (int argc, char *argv[])
 	
 	if( argc == 2 )
 	{
-	    int dbg = atoi(argv[3]);
+	    int dbg = atoi(argv[1]);
 	    
-	    if( dbg < Lepton3::DBG_FULL )
+	    switch( dbg )
 	    {
-	        deb_lvl = static_cast<Lepton3::DebugLvl>(dbg);
+	    case 1:
+	        deb_lvl = Lepton3::DBG_INFO;
+	        break;
+	        
+	    case 2:
+	        deb_lvl = Lepton3::DBG_FULL;
+	        break;
+	        
+	    default:
+	    case 0:
+	        deb_lvl = Lepton3::DBG_NONE;
+	        break;	    
 	    }
 	}
 	
@@ -56,8 +67,10 @@ int main (int argc, char *argv[])
 	char image_name[32];
 	
 	while(!close)
-    {		
-        unsigned short* data = lepton3.getLastFrame( );
+    {	
+        uint16_t min;
+        uint16_t max;	
+        unsigned short* data = lepton3.getLastFrame( &min, &max );
 		
         if( data )
 		{
@@ -65,20 +78,26 @@ int main (int argc, char *argv[])
 			string imgStr = image_name;
 			
             cv::Mat frame16( 120, 160, CV_16UC1, data );
-
-            //memcpy( frame16.data, data, 160*120 );
+            
+            // >>>>> Rescaling/Normalization to 8bit
+            double diff = static_cast<double>(max - min);
+		    double scale = 255./diff;
+		    
+		    frame16 -= min;
+		    frame16 *= scale; 
 
             cv::Mat frame8;
-            //cv::normalize( frame16, frame16, 1, 0, cv::NORM_MINMAX );
-            frame16.convertTo( frame8, CV_8UC1, 1./256. );   
-            
-            //cout << frame8 << endl;         
+            frame16.convertTo( frame8, CV_8UC1 ); 
+            // <<<<< Rescaling/Normalization to 8bit
 			
-            cv::imwrite( imgStr, frame8 );//*/
+            cv::imwrite( imgStr, frame8 );
 			
 			frameIdx++;
 			
-			cout << "> " << imgStr << endl;
+			if( deb_lvl>=Lepton3::DBG_INFO  )
+			{
+			    cout << "> " << imgStr << endl;
+			}
         }
 		
         std::this_thread::sleep_for(std::chrono::milliseconds(50));

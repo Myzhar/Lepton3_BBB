@@ -26,7 +26,7 @@ public:
     bool start();
     void stop();
 
-    unsigned short* getLastFrame();
+    unsigned short* getLastFrame( uint16_t* min=NULL, uint16_t* max=NULL );
 
 protected:
     void thread_func();
@@ -84,6 +84,9 @@ private:
     StopWatch mThreadWatch;
 
     bool mDataValid;
+    
+    uint16_t mMin;
+    uint16_t mMax;
 };
 
 

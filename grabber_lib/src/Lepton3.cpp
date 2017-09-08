@@ -24,18 +24,19 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     mSpiDevice = spiDevice;
     mSpiFd = -1;
 
-    mSpiMode = SPI_MODE_3; // CPOL=1 (Clock Idle high level), CPHA=1 (SDO transmit/change edge idle to active)
+    mSpiMode = SPI_MODE_3; // CPOL=1 (Clock Idle high level), 
+                           // CPHA=1 (SDO transmit/change edge idle to active)
     mSpiBits = 8;
-    mSpiSpeed = 32000000; // Max available SPI speed (according to Lepton3 datasheet)
+    mSpiSpeed = 32500000; // Max available SPI speed (according to Lepton3 datasheet)
 
-    mPacketCount=60; // default no Telemetry
-    mPacketSize=164; // default 14 bit raw data
-    mSegmentCount=4; // 4 segments for each unique frame
+    mPacketCount  = 60;  // default no Telemetry
+    mPacketSize   = 164; // default 14 bit raw data
+    mSegmentCount = 4;   // 4 segments for each unique frame
 
     mSegmentFreq=106.0f; // According to datasheet each segment is ready at 106 Hz
     
-    mSegmSize=mPacketCount*mPacketSize;
-    mSpiRawFrameBufSize=mSegmSize*mSegmentCount;
+    mSegmSize = mPacketCount*mPacketSize;
+    mSpiRawFrameBufSize = mSegmSize*mSegmentCount;
 
     mSpiRawFrameBuf = new uint8_t[mSpiRawFrameBufSize];
     
@@ -61,6 +62,7 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
         cout << "Debug level: " << mDebugLvl << endl;
 
     mStop = false;
+    mDataValid = false;
 }
 
 Lepton3::~Lepton3()
@@ -306,12 +308,14 @@ void Lepton3::thread_func()
 
         if( mDebugLvl>=DBG_FULL )
         {
-            cout << endl << "Thread period: " << threadPeriod << " usec - VoSPI Available: " << usecAvail << " usec" << endl;
+            cout << endl << "Thread period: " << threadPeriod << " usec - VoSPI Available: " 
+                << usecAvail << " usec" << endl;
         }
 
         if( mDebugLvl>=DBG_INFO )
         {
-            cout << "VoSPI segment acquire freq: " << (1000.0*1000.0)/threadPeriod << " hz" << endl;
+            cout << "VoSPI segment acquire freq: " << (1000.0*1000.0)/threadPeriod 
+                << " hz" << endl;
         }
         // <<<<< Timing info
 
@@ -366,7 +370,9 @@ void Lepton3::thread_func()
 
                     if( mDebugLvl>=DBG_FULL )
                     {
-                        cout << endl << "************************ FRAME COMPLETE ************************" << endl;
+                        cout << endl 
+                            << "************************ FRAME COMPLETE " \
+                                "************************" << endl;
                     }
 
                     // >>>>> RAW to 16bit data conversion
@@ -416,8 +422,10 @@ void Lepton3::thread_func()
         }
         // <<<<< Segment check
         
-        // According to datasheet, after 4 valid segments (ID 1,2,3,4) we should read 8 not valid segments (ID 0)
-        // If the number of not valid segments is higher than 8 we need to resync the host with the device
+        // According to datasheet, after 4 valid segments (ID 1,2,3,4) we should 
+        // read 8 not valid segments (ID 0)
+        // If the number of not valid segments is higher than 8 we need to resync 
+        // the host with the device
         if( notValidCount>=10 )
         {
             resync();
@@ -553,8 +561,10 @@ void Lepton3::raw2data()
     int wordCount = mSpiRawFrameBufSize/2;
     int wordPackSize = mPacketSize/2;
 
-    uint16_t minValue = 65535;
-    uint16_t maxValue = 0;
+    mMin = 0x3fff;
+    mMax = 0;
+    
+    uint16_t* frameBuffer = (uint16_t*)mSpiRawFrameBuf;
 
     int pixIdx = 0;
     for(int i=0; i<wordCount; i++)
@@ -565,42 +575,56 @@ void Lepton3::raw2data()
             continue;
         }
 
-        // >>>>> Flip the MSB and LSB
-        int temp = mSpiRawFrameBuf[i*2];
-        mSpiRawFrameBuf[i*2] = mSpiRawFrameBuf[i*2+1];
-        mSpiRawFrameBuf[i*2+1] = temp;
-        // <<<<< Flip the MSB and LSB
-
-        uint16_t value = ((uint16_t*)mSpiRawFrameBuf)[i];
+        //uint16_t value = (((uint16_t*)mSpiRawFrameBuf)[i]);
         
-        cout << value << " ";
+        int temp = mSpiRawFrameBuf[i*2];
+			mSpiRawFrameBuf[i*2] = mSpiRawFrameBuf[i*2+1];
+			mSpiRawFrameBuf[i*2+1] = temp;
+			
+	    uint16_t value = frameBuffer[i];
+        
+        //cout << value << " ";
 
-        if(value> maxValue)
+        if( value > mMax )
         {
-            maxValue = value;
+            mMax = value;
         }
 
-        if(value < minValue)
+        if(value < mMin)
         {
             if(value != 0)
-                minValue = value;
+                mMin = value;
         }
 
         mDataFrameBuf[pixIdx] = value;
         pixIdx++;
     }
     
-    cout << endl << "---------------------------------------------------" << endl;
+    if( mDebugLvl>=DBG_INFO )
+    {
+        cout << endl << "Min: " << mMin << " - Max: " << mMax << endl;    
+        cout << "---------------------------------------------------" << endl;
+    }
     
     // cout << pixIdx << endl;
 }
 
-unsigned short* Lepton3::getLastFrame(  )
+unsigned short* Lepton3::getLastFrame( uint16_t* min/*=NULL*/, uint16_t* max/*=NULL*/   )
 {
     if( !mDataValid )
         return NULL;
 
     mDataValid = false;
 
+    if( min )
+    {
+        *min = mMin;
+    }
+    
+    if( max )
+    {
+        *max = mMax;
+    }
+    
     return mDataFrameBuf;
 }
