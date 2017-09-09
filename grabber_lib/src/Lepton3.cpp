@@ -14,6 +14,9 @@
 
 #define KELVIN (-273.15f)
 
+#define FRAME_W 160
+#define FRAME_H 120
+
 using namespace std;
 
 Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
@@ -33,14 +36,14 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     mPacketSize   = 164; // default 14 bit raw data
     mSegmentCount = 4;   // 4 segments for each unique frame
 
-    mSegmentFreq=106.0f; // According to datasheet each segment is ready at 106 Hz
+    mSegmentFreq = 106.0f; // According to datasheet each segment is ready at 106 Hz
     
     mSegmSize = mPacketCount*mPacketSize;
     mSpiRawFrameBufSize = mSegmSize*mSegmentCount;
 
     mSpiRawFrameBuf = new uint8_t[mSpiRawFrameBufSize];
     
-    mDataFrameBuf = new uint16_t[160*120];
+    mDataFrameBuf = new uint16_t[FRAME_W*FRAME_H];
 
     mSpiTR.tx_buf = (unsigned long)NULL;
     mSpiTR.delay_usecs = 50;
@@ -609,12 +612,15 @@ void Lepton3::raw2data()
     // cout << pixIdx << endl;
 }
 
-unsigned short* Lepton3::getLastFrame( uint16_t* min/*=NULL*/, uint16_t* max/*=NULL*/   )
+const uint16_t* Lepton3::getLastFrame( uint8_t& width, uint8_t& height, uint16_t* min/*=NULL*/, uint16_t* max/*=NULL*/ )
 {
     if( !mDataValid )
         return NULL;
 
     mDataValid = false;
+    
+    width = FRAME_W;
+    height = FRAME_H;
 
     if( min )
     {

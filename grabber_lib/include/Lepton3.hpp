@@ -17,16 +17,31 @@
 
 class Lepton3
 {
-public:
+public:     
     typedef enum _debug_lvl { DBG_NONE=0, DBG_INFO=1, DBG_FULL=2 } DebugLvl;
 
+
+    /*! Default constructor */
     Lepton3(std::string spiDevice="/dev/spidev1.0", uint16_t cciPort=1, DebugLvl dbgLvl=DBG_FULL);
-    ~Lepton3();
+    
+    /*! Destructor */
+    virtual ~Lepton3();
 
-    bool start();
-    void stop();
+    
+    bool start(); //!< Start grabbing thread
+    void stop();  //!< Stop grabbing thread
 
-    unsigned short* getLastFrame( uint16_t* min=NULL, uint16_t* max=NULL );
+    /*! Returns last available frame as 16bit vector not normalized
+     *   
+     * @param width return the width of the frame
+     * @param height return the height of the frame
+     * @param min if not NULL return the minimum value
+     * @param max if not NULL return the maximum value
+     *
+     * @return a pointer to last available data vector
+     */
+    const uint16_t* getLastFrame( uint8_t& width, uint8_t& height, 
+                                  uint16_t* min=NULL, uint16_t* max=NULL );
     
     // >>>>> Controls
     bool lepton_perform_ffc();           //!< Force FFC calculation

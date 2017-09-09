@@ -100,7 +100,8 @@ char image_name[32];
     {	
         uint16_t min;
         uint16_t max;	
-        unsigned short* data = lepton3.getLastFrame( &min, &max );
+        uint8_t w,h;
+        const uint16_t* data = lepton3.getLastFrame( w, h, &min, &max );
 		
         if( data )
 		{
@@ -108,9 +109,9 @@ char image_name[32];
 		    stpWtc.tic();
 		    
 		    double freq = (1000.*1000.)/period_usec; 
-		    cv::Mat frame16( 120, 160, CV_16UC1 );
+		    cv::Mat frame16( h, w, CV_16UC1 );
 		    
-		    memcpy( frame16.data, data, 160*120*sizeof(unsigned short) );
+		    memcpy( frame16.data, data, w*h*sizeof(uint16_t) );
             
             // >>>>> Rescaling/Normalization to 8bit
             double diff = static_cast<double>(max - min);
