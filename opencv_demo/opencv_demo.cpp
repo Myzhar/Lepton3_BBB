@@ -4,6 +4,7 @@
 #include <string>
 #include <chrono>
 #include <thread>
+
 #include "Lepton3.hpp"
 
 #include <opencv2/core/core.hpp>
@@ -63,8 +64,6 @@ int main (int argc, char *argv[])
 	        break;	    
 	    }
 	}
-	
-char image_name[32];
 
 #ifdef SAVE_MJPEG 
     cv::VideoWriter writer;
@@ -74,7 +73,7 @@ char image_name[32];
     
     writer.open( "lepton3.avi", CV_FOURCC('M','J','P','G'), fps, cv::Size(w,h) );
     
-    bool writeFrame = writer.isOpened();
+    bool writeFrame = writer.isOpened();    
 #endif
 	
     Lepton3 lepton3( "/dev/spidev1.0", 1, deb_lvl );
@@ -131,6 +130,7 @@ char image_name[32];
                 writer.write(frame8);
             }
 #else
+            char image_name[32];
 			sprintf(image_name, "IMG_%.6lu.png", frameIdx);
 			string imgStr = image_name;
             cv::imwrite( imgStr, frame8 );       
