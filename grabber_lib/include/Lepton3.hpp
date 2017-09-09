@@ -27,6 +27,13 @@ public:
     void stop();
 
     unsigned short* getLastFrame( uint16_t* min=NULL, uint16_t* max=NULL );
+    
+    // >>>>> Controls
+    bool lepton_perform_ffc();           //!< Force FFC calculation
+    float getSensorTemperatureK();       //!< Get Temperature of the Flir Sensor in °K
+    float raw2Celsius(float);            //!< Converts a RAW value to °C
+    int enableRadiometry( bool enable ); //!< Enable/Disable radiometry
+    // <<<<< Controls
 
 protected:
     void thread_func();
@@ -66,13 +73,9 @@ private:
     // >>>>> Lepton control (CCI)
     bool mCciConnected;
     LEP_UINT16 mCciPort;
-    LEP_CAMERA_PORT_DESC_T_PTR mCciConnPort;
+    LEP_CAMERA_PORT_DESC_T mCciConnPort;
 
-    bool CciConnect();                  //!< Connect CCI (I2C)
-    bool lepton_perform_ffc();          //!< Force FFC calculation
-    float getSensorTemperatureK();      //!< Get Temperature of the Flir Sensor in °K
-    float raw2Celsius(float);           //!< Converts a RAW value to °C
-    int enableRadiometry( bool enable );//!< Enable/Disable radiometry
+    bool CciConnect();      //!< Connect CCI (I2C)
     // <<<<< Lepton control (CCI)
 
     std::thread mThread;

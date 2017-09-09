@@ -471,7 +471,7 @@ void Lepton3::resync()
 
 bool Lepton3::CciConnect()
 {
-    int result = LEP_OpenPort( mCciPort, LEP_CCI_TWI, 400, mCciConnPort );
+    int result = LEP_OpenPort( mCciPort, LEP_CCI_TWI, 400, &mCciConnPort );
 
     if (result != LEP_OK)
     {
@@ -493,7 +493,7 @@ float Lepton3::getSensorTemperatureK()
 
     LEP_SYS_FPA_TEMPERATURE_KELVIN_T temp;
 
-    LEP_RESULT result = LEP_GetSysFpaTemperatureKelvin( mCciConnPort, (LEP_SYS_FPA_TEMPERATURE_KELVIN_T_PTR)(&temp));
+    LEP_RESULT result = LEP_GetSysFpaTemperatureKelvin( &mCciConnPort, (LEP_SYS_FPA_TEMPERATURE_KELVIN_T_PTR)(&temp));
 
     if (result != LEP_OK)
     {
@@ -526,7 +526,7 @@ bool Lepton3::lepton_perform_ffc()
             return false;
     }
 
-    if( LEP_RunSysFFCNormalization(mCciConnPort) != LEP_OK )
+    if( LEP_RunSysFFCNormalization(&mCciConnPort) != LEP_OK )
     {
         cerr << "Could not perform FFC Normalization" << endl;
         return false;
@@ -542,14 +542,14 @@ int Lepton3::enableRadiometry( bool enable )
 
     LEP_RAD_ENABLE_E rad_status;
 
-    if( LEP_GetRadEnableState(mCciConnPort, (LEP_RAD_ENABLE_E_PTR)&rad_status ) != LEP_OK )
+    if( LEP_GetRadEnableState(&mCciConnPort, (LEP_RAD_ENABLE_E_PTR)&rad_status ) != LEP_OK )
         return -1;
 
     LEP_RAD_ENABLE_E new_status = enable?LEP_RAD_ENABLE:LEP_RAD_DISABLE;
 
     if( rad_status != new_status )
     {
-        if( LEP_SetRadEnableState(mCciConnPort, new_status ) != LEP_OK )
+        if( LEP_SetRadEnableState(&mCciConnPort, new_status ) != LEP_OK )
             return -1;
     }
 

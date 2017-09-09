@@ -10,6 +10,10 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include "stopwatch.hpp"
+
+#define SAVE_MJPEG 1
+
 using namespace std;
 
 static bool close = false;
@@ -60,11 +64,37 @@ int main (int argc, char *argv[])
 	    }
 	}
 	
+char image_name[32];
+
+#ifdef SAVE_MJPEG 
+    cv::VideoWriter writer;
+    int fps=9;
+    int w=160;
+    int h=120;
+    
+    writer.open( "lepton3.avi", CV_FOURCC('M','J','P','G'), fps, cv::Size(w,h) );
+    
+    bool writeFrame = writer.isOpened();
+#endif
+	
     Lepton3 lepton3( "/dev/spidev1.0", 1, deb_lvl );
+    
+    if( lepton3.enableRadiometry( true ) < 0)
+    {
+        cout << "Failed to enable radiometry" << endl;
+    }
+    else
+    {
+        cout << " * Radiometry enabled " << endl;
+    }
+    
 	lepton3.start();
 	
-	uint64_t frameIdx=0;
-	char image_name[32];
+	uint64_t frameIdx=0;	
+	
+	StopWatch stpWtc;
+	
+	stpWtc.tic();
 	
 	while(!close)
     {	
@@ -74,10 +104,13 @@ int main (int argc, char *argv[])
 		
         if( data )
 		{
-            sprintf(image_name, "IMG_%.6lu.png", frameIdx);
-			string imgStr = image_name;
-			
-            cv::Mat frame16( 120, 160, CV_16UC1, data );
+		    double period_usec = stpWtc.toc();
+		    stpWtc.tic();
+		    
+		    double freq = (1000.*1000.)/period_usec; 
+		    cv::Mat frame16( 120, 160, CV_16UC1 );
+		    
+		    memcpy( frame16.data, data, 160*120*sizeof(unsigned short) );
             
             // >>>>> Rescaling/Normalization to 8bit
             double diff = static_cast<double>(max - min);
@@ -90,20 +123,39 @@ int main (int argc, char *argv[])
             frame16.convertTo( frame8, CV_8UC1 ); 
             // <<<<< Rescaling/Normalization to 8bit
 			
-            cv::imwrite( imgStr, frame8 );
+#ifdef SAVE_MJPEG
+            if(writeFrame)
+            {
+                cv::cvtColor(frame8,frame8, CV_GRAY2BGR );
+                writer.write(frame8);
+            }
+#else
+			sprintf(image_name, "IMG_%.6lu.png", frameIdx);
+			string imgStr = image_name;
+            cv::imwrite( imgStr, frame8 );       
+               
+            if( deb_lvl>=Lepton3::DBG_INFO  )
+			{
+                cout << "> " << imgStr << endl;
+            }
+#endif
 			
 			frameIdx++;
 			
 			if( deb_lvl>=Lepton3::DBG_INFO  )
 			{
-			    cout << "> " << imgStr << endl;
+			    cout << "> Frame period: " << period_usec <<  " usec - FPS: " << freq << endl;
 			}
         }
 		
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 	
 	lepton3.stop();
+	
+#ifdef SAVE_MJPEG
+    writer.release();
+#endif
 
     return EXIT_SUCCESS;
 }
