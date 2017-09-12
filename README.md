@@ -1,7 +1,7 @@
 # Lepton3_BBB
 A grabber for BeagleBone Blue to acquire thermal images from Lepton3 sensor
 
-[Video 1](https://youtu.be/Yov98Ps2ttc) [Video 2](https://youtu.be/WnkK0AOtyL8) [Video 2](https://youtu.be/WnkK0AOtyL8)
+Demo:[Video 1](https://youtu.be/Yov98Ps2ttc) - [Video 2](https://youtu.be/WnkK0AOtyL8) - [Video 2](https://youtu.be/WnkK0AOtyL8)
 
 ## SPI Buffer size
 SPI buffer size must be set to ~~131072~~ 20480 bytes (safe value) to allow the receiving of a full segment for RGB data
