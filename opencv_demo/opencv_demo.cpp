@@ -12,7 +12,7 @@
 
 #include "stopwatch.hpp"
 
-#define SAVE_MJPEG 1
+#define SAVE_MJPEG 1 // Comment to save frames to PNG images
 
 using namespace std;
 
