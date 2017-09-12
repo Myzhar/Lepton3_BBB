@@ -114,11 +114,11 @@ char image_name[32];
 		    memcpy( frame16.data, data, w*h*sizeof(uint16_t) );
             
             // >>>>> Rescaling/Normalization to 8bit
-            double diff = static_cast<double>(max - min);
-		    double scale = 255./diff;
+            double diff = static_cast<double>(max - min); // Image range
+		    double scale = 255./diff; // Scale factor
 		    
-		    frame16 -= min;
-		    frame16 *= scale; 
+		    frame16 -= min; // Bias
+		    frame16 *= scale; // Rescale data
 
             cv::Mat frame8;
             frame16.convertTo( frame8, CV_8UC1 ); 
@@ -127,7 +127,7 @@ char image_name[32];
 #ifdef SAVE_MJPEG
             if(writeFrame)
             {
-                cv::cvtColor(frame8,frame8, CV_GRAY2BGR );
+                cv::cvtColor(frame8,frame8, CV_GRAY2RGB ); // MPEG needs RGB frames
                 writer.write(frame8);
             }
 #else
@@ -141,12 +141,12 @@ char image_name[32];
             }
 #endif
 			
-			frameIdx++;
-			
-			if( deb_lvl>=Lepton3::DBG_INFO  )
-			{
-			    cout << "> Frame period: " << period_usec <<  " usec - FPS: " << freq << endl;
-			}
+	        frameIdx++;
+
+            if( deb_lvl>=Lepton3::DBG_INFO  )
+            {
+                cout << "> Frame period: " << period_usec <<  " usec - FPS: " << freq << endl;
+            }
         }
 		
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
