@@ -12,6 +12,7 @@
 #include <linux/spi/spidev.h>
 
 #include "LEPTON_Types.h"
+#include "LEPTON_ErrorCodes.h"
 
 #include "stopwatch.hpp"
 
@@ -44,10 +45,14 @@ public:
                                   uint16_t* min=NULL, uint16_t* max=NULL );
     
     // >>>>> Controls
-    bool lepton_perform_ffc();           //!< Force FFC calculation
-    float getSensorTemperatureK();       //!< Get Temperature of the Flir Sensor in °K
-    float raw2Celsius(float);            //!< Converts a RAW value to °C
-    int enableRadiometry( bool enable ); //!< Enable/Disable radiometry
+    LEP_RESULT lepton_perform_ffc();              //!< Force FFC calculation
+    LEP_RESULT getSensorTemperatureK(float& tempK);          //!< Get Temperature of the Flir Sensor in °K
+    float raw2Celsius(float raw);               //!< Converts a RAW value to °C
+    LEP_RESULT enableRadiometry( bool enable );    //!< Enable/Disable radiometry
+    LEP_RESULT getRadiometryStatus(bool &status);  //!< Verify if Radiometry is enabled or not
+    LEP_RESULT getAgcStatus(bool &status);         //!< Verify if AGC is enabled or not
+    LEP_RESULT enableAgc( bool enable );           //!< Enable/Disable AGC
+
     // <<<<< Controls
 
 protected:
@@ -58,7 +63,7 @@ protected:
     int SpiReadSegment();   //!< Read a new VoSPI segment and returns its ID
     void resync();          //!< Resync VoSPI communication after de-sync
 
-    void raw2data();        //!< Convert RAW VoSPI frame to 16bit data matrix
+    void raw2data16();      //!< Convert RAW VoSPI frame to 16bit data matrix
 
 private:
     // >>>>> VoSPI
