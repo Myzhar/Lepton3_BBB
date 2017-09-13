@@ -384,7 +384,7 @@ void Lepton3::thread_func()
                         testTime2.tic();
                     }
 
-                    raw2data();
+                    raw2data16();
 
                     if( mDebugLvl>=DBG_FULL )
                     {
@@ -486,12 +486,12 @@ bool Lepton3::CciConnect()
     return true;
 }
 
-float Lepton3::getSensorTemperatureK()
+LEP_RESULT Lepton3::getSensorTemperatureK(float& tempK )
 {
     if(!mCciConnected)
     {
         if( !CciConnect() )
-            return KELVIN;
+            return LEP_ERROR;
     }
 
     LEP_SYS_FPA_TEMPERATURE_KELVIN_T temp;
@@ -501,19 +501,19 @@ float Lepton3::getSensorTemperatureK()
     if (result != LEP_OK)
     {
         cerr << "Cannot read lepton FPA temperature" << endl;
-        return false;
+        return LEP_ERROR;
     }
 
-    float tempK = (float)(temp)/100.0f;
+    tempK = static_cast<float>(temp)/100.0f;
 
     if( mDebugLvl>=DBG_INFO )
         cout << "FPA temperature: " << tempK << "°K - " ;
 
-    return tempK;
+    return LEP_OK;
 }
 
 
-float Lepton3::raw2Celsius(float raw)
+float Lepton3::raw2Celsius(float raw )
 {
     float ambientTemperature = 25.0;
     float slope = 0.0217;
@@ -521,45 +521,203 @@ float Lepton3::raw2Celsius(float raw)
     return slope*raw+ambientTemperature-177.77;
 }
 
-bool Lepton3::lepton_perform_ffc()
+LEP_RESULT Lepton3::lepton_perform_ffc()
 {
     if(!mCciConnected)
     {
         if( !CciConnect() )
-            return false;
+            return LEP_ERROR;
     }
 
     if( LEP_RunSysFFCNormalization(&mCciConnPort) != LEP_OK )
     {
         cerr << "Could not perform FFC Normalization" << endl;
-        return false;
+        return LEP_ERROR;
     }
+
+    return LEP_OK;
 }
 
-int Lepton3::enableRadiometry( bool enable )
+LEP_RESULT Lepton3::getRadiometryStatus( bool& status )
 {
     if(!mCciConnected)
     {
-        CciConnect();
+        if( !CciConnect() )
+            return LEP_ERROR;
     }
 
     LEP_RAD_ENABLE_E rad_status;
 
     if( LEP_GetRadEnableState(&mCciConnPort, (LEP_RAD_ENABLE_E_PTR)&rad_status ) != LEP_OK )
-        return -1;
+    {
+        cerr << "Cannot read Radiometry status" << endl;
+        return LEP_ERROR;
+    }
+
+    if( rad_status == LEP_RAD_ENABLE )
+        status = true;
+    else
+        status = false;
+
+    return LEP_OK;
+}
+
+LEP_RESULT Lepton3::enableRadiometry( bool enable )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    LEP_RAD_ENABLE_E rad_status;
+
+    if( LEP_GetRadEnableState(&mCciConnPort, (LEP_RAD_ENABLE_E_PTR)&rad_status ) != LEP_OK )
+    {
+        cerr << "Cannot read Radiometry status" << endl;
+        return LEP_ERROR;
+    }
 
     LEP_RAD_ENABLE_E new_status = enable?LEP_RAD_ENABLE:LEP_RAD_DISABLE;
 
     if( rad_status != new_status )
     {
         if( LEP_SetRadEnableState(&mCciConnPort, new_status ) != LEP_OK )
-            return -1;
+        {
+            cerr << "Cannot set Radiometry status" << endl;
+            return LEP_ERROR;
+        }
     }
 
-    return new_status;
+    return LEP_OK;
 }
 
-void Lepton3::raw2data()
+LEP_RESULT Lepton3::getAgcStatus(bool &status)
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    LEP_AGC_ENABLE_E agc_status;
+
+    if( LEP_GetAgcEnableState( &mCciConnPort, (LEP_AGC_ENABLE_E_PTR)&agc_status ) != LEP_OK )
+    {
+        cerr << "Cannot read AGC status" << endl;
+        return LEP_ERROR;
+    }
+
+    if( agc_status == LEP_AGC_ENABLE )
+        status = true;
+    else
+        status = false;
+
+    return LEP_OK;
+}
+
+LEP_RESULT Lepton3::enableAgc( bool enable )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    LEP_AGC_ENABLE_E agc_status;
+
+    if( LEP_GetAgcEnableState(&mCciConnPort, (LEP_AGC_ENABLE_E_PTR)&agc_status ) != LEP_OK )
+    {
+        cerr << "Cannot read AGC status" << endl;
+        return LEP_ERROR;
+    }
+
+    LEP_AGC_ENABLE_E new_status = enable?LEP_AGC_ENABLE:LEP_AGC_DISABLE;
+
+    if( agc_status != new_status )
+    {
+        if( LEP_SetAgcEnableState(&mCciConnPort, new_status ) != LEP_OK )
+        {
+            cerr << "Cannot set Radiometry status" << endl;
+            return LEP_ERROR;
+        }
+    }
+
+    return LEP_OK;
+}
+
+LEP_RESULT Lepton3::getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    LEP_RAD_ROI_T roi;
+
+    if( LEP_GetRadSpotmeterRoi( &mCciConnPort, (LEP_RAD_ROI_T_PTR)&roi ) != LEP_OK )
+    {
+        cerr << "Cannot read Spotmeter ROI" << endl;
+        return LEP_ERROR;
+    }
+
+    x = roi.startCol;
+    y = roi.startRow;
+    w = roi.endCol - x;
+    h = roi.endRow - y;
+
+    return LEP_OK;
+}
+
+LEP_RESULT Lepton3::setSpotROI( uint16_t x, uint16_t y, uint16_t w, uint16_t h )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    LEP_RAD_ROI_T newROI;
+    newROI.startCol = x;
+    newROI.startRow = y;
+    newROI.endCol = x+w;
+    newROI.endRow = y+h;
+
+    if( LEP_SetRadSpotmeterRoi( &mCciConnPort, newROI ) != LEP_OK )
+    {
+        cerr << "Cannot set Spotmeter ROI" << endl;
+        return LEP_ERROR;
+    }
+
+    return LEP_OK;
+}
+
+LEP_RESULT Lepton3::getSpotInfo( float& valueK, float& minK, float& maxK, uint16_t& count )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    LEP_RAD_SPOTMETER_OBJ_KELVIN_T info;
+
+    if( LEP_GetRadSpotmeterObjInKelvinX100( &mCciConnPort, (LEP_RAD_SPOTMETER_OBJ_KELVIN_T_PTR)&info ) != LEP_OK )
+    {
+        cerr << "Cannot read Spotmeter info" << endl;
+        return LEP_ERROR;
+    }
+
+    valueK = static_cast<float>(info.radSpotmeterValue)/100.f;
+    minK = static_cast<float>(info.radSpotmeterMinValue)/100.f;
+    maxK = static_cast<float>(info.radSpotmeterMaxValue)/100.f;
+    count = info.radSpotmeterPopulation;
+
+    return LEP_OK;
+}
+
+void Lepton3::raw2data16()
 {
     int wordCount = mSpiRawFrameBufSize/2;
     int wordPackSize = mPacketSize/2;
