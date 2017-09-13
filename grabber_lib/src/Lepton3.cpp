@@ -646,6 +646,77 @@ LEP_RESULT Lepton3::enableAgc( bool enable )
     return LEP_OK;
 }
 
+LEP_RESULT Lepton3::getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    LEP_RAD_ROI_T roi;
+
+    if( LEP_GetRadSpotmeterRoi( &mCciConnPort, (LEP_RAD_ROI_T_PTR)&roi ) != LEP_OK )
+    {
+        cerr << "Cannot read Spotmeter ROI" << endl;
+        return LEP_ERROR;
+    }
+
+    x = roi.startCol;
+    y = roi.startRow;
+    w = roi.endCol - x;
+    h = roi.endRow - y;
+
+    return LEP_OK;
+}
+
+LEP_RESULT Lepton3::setSpotROI( uint16_t x, uint16_t y, uint16_t w, uint16_t h )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    LEP_RAD_ROI_T newROI;
+    newROI.startCol = x;
+    newROI.startRow = y;
+    newROI.endCol = x+w;
+    newROI.endRow = y+h;
+
+    if( LEP_SetRadSpotmeterRoi( &mCciConnPort, newROI ) != LEP_OK )
+    {
+        cerr << "Cannot set Spotmeter ROI" << endl;
+        return LEP_ERROR;
+    }
+
+    return LEP_OK;
+}
+
+LEP_RESULT Lepton3::getSpotInfo( float& valueK, float& minK, float& maxK, uint16_t& count )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    LEP_RAD_SPOTMETER_OBJ_KELVIN_T info;
+
+    if( LEP_GetRadSpotmeterObjInKelvinX100( &mCciConnPort, (LEP_RAD_SPOTMETER_OBJ_KELVIN_T_PTR)&info ) != LEP_OK )
+    {
+        cerr << "Cannot read Spotmeter info" << endl;
+        return LEP_ERROR;
+    }
+
+    valueK = static_cast<float>(info.radSpotmeterValue)/100.f;
+    minK = static_cast<float>(info.radSpotmeterMinValue)/100.f;
+    maxK = static_cast<float>(info.radSpotmeterMaxValue)/100.f;
+    count = info.radSpotmeterPopulation;
+
+    return LEP_OK;
+}
+
 void Lepton3::raw2data16()
 {
     int wordCount = mSpiRawFrameBufSize/2;

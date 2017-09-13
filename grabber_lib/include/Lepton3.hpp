@@ -48,11 +48,16 @@ public:
     LEP_RESULT lepton_perform_ffc();              //!< Force FFC calculation
     LEP_RESULT getSensorTemperatureK(float& tempK);          //!< Get Temperature of the Flir Sensor in °K
     float raw2Celsius(float raw);               //!< Converts a RAW value to °C
+
     LEP_RESULT enableRadiometry( bool enable );    //!< Enable/Disable radiometry
     LEP_RESULT getRadiometryStatus(bool &status);  //!< Verify if Radiometry is enabled or not
+
     LEP_RESULT getAgcStatus(bool &status);         //!< Verify if AGC is enabled or not
     LEP_RESULT enableAgc( bool enable );           //!< Enable/Disable AGC
 
+    LEP_RESULT getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h ); //!< Get Spotmeter region
+    LEP_RESULT setSpotROI( uint16_t x, uint16_t y, uint16_t w, uint16_t h );     //!< Set Spotmeter region
+    LEP_RESULT getSpotInfo( float& valueK, float& minK, float& maxK, uint16_t& count ); //!< Get Spotmeter info
     // <<<<< Controls
 
 protected:
