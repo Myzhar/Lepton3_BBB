@@ -646,7 +646,7 @@ LEP_RESULT Lepton3::enableAgc( bool enable )
     return LEP_OK;
 }
 
-LEP_RESULT Lepton3::getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h )
+/*LEP_RESULT Lepton3::getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h )
 {
     if(!mCciConnected)
     {
@@ -715,7 +715,7 @@ LEP_RESULT Lepton3::getSpotInfo( float& valueK, float& minK, float& maxK, uint16
     count = info.radSpotmeterPopulation;
 
     return LEP_OK;
-}
+}*/
 
 void Lepton3::raw2data16()
 {

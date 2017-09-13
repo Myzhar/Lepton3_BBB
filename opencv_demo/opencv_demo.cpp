@@ -15,6 +15,8 @@
 
 #define SAVE_MJPEG 1 // Comment to save frames to PNG images
 
+#define USE_RADIOMETRY true
+
 using namespace std;
 
 static bool close = false;
@@ -78,13 +80,39 @@ int main (int argc, char *argv[])
 	
     Lepton3 lepton3( "/dev/spidev1.0", 1, deb_lvl );
     
-    if( lepton3.enableRadiometry( true ) < 0)
+    if( lepton3.enableRadiometry( USE_RADIOMETRY ) < 0)
     {
-        cout << "Failed to enable radiometry" << endl;
+        cout << "Failed to set radiometry status" << endl;
     }
     else
     {
-        cout << " * Radiometry enabled " << endl;
+        if(USE_RADIOMETRY)
+        {
+            cout << " * Radiometry enabled " << endl;
+        }
+        else
+        {
+            cout << " * Radiometry disabled " << endl;
+        }
+    }
+    
+    // NOTE: if radiometry is enabled is unuseful to keep AGC enabled 
+    //       (see "FLIR LEPTON 3® Long Wave Infrared (LWIR) Datasheet" for more info)
+    
+    if( lepton3.enableAgc( !USE_RADIOMETRY ) < 0)
+    {
+        cout << "Failed to set radiometry status" << endl;
+    }
+    else
+    {
+        if(USE_RADIOMETRY)
+        {
+            cout << " * AGC disabled " << endl;
+        }
+        else
+        {
+            cout << " * AGC enabled " << endl;
+        }
     }
     
 	lepton3.start();
@@ -142,7 +170,7 @@ int main (int argc, char *argv[])
 #endif
 			
 	        frameIdx++;
-
+	        
             if( deb_lvl>=Lepton3::DBG_INFO  )
             {
                 cout << "> Frame period: " << period_usec <<  " usec - FPS: " << freq << endl;

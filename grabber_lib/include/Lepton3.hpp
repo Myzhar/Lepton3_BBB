@@ -55,9 +55,14 @@ public:
     LEP_RESULT getAgcStatus(bool &status);         //!< Verify if AGC is enabled or not
     LEP_RESULT enableAgc( bool enable );           //!< Enable/Disable AGC
 
-    LEP_RESULT getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h ); //!< Get Spotmeter region
-    LEP_RESULT setSpotROI( uint16_t x, uint16_t y, uint16_t w, uint16_t h );     //!< Set Spotmeter region
-    LEP_RESULT getSpotInfo( float& valueK, float& minK, float& maxK, uint16_t& count ); //!< Get Spotmeter info
+    // >>>>> Not yet available on Lepton3
+    //LEP_RESULT getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h ); //!< Get Spotmeter region
+    //LEP_RESULT setSpotROI( uint16_t x, uint16_t y, uint16_t w, uint16_t h );     //!< Set Spotmeter region
+    //LEP_RESULT getSpotInfo( float& valueK, float& minK, float& maxK, uint16_t& count ); //!< Get Spotmeter info
+    // <<<<< Not yet available on Lepton3
+    
+    // >>>>> Not yet available on Lepton3
+    
     // <<<<< Controls
 
 protected:
