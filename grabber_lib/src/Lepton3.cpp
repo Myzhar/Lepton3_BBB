@@ -646,6 +646,23 @@ LEP_RESULT Lepton3::enableAgc( bool enable )
     return LEP_OK;
 }
 
+LEP_RESULT Lepton3::getGainMode( LEP_SYS_GAIN_MODE_E& mode)
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    if( LEP_GetSysGainMode( &mCciConnPort, (LEP_SYS_GAIN_MODE_E_PTR)&mode ) != LEP_OK )
+    {
+        cerr << "Cannot read Sys Gain Mode" << endl;
+        return LEP_ERROR;
+    }
+
+    return LEP_OK;
+}
+
 /*LEP_RESULT Lepton3::getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h )
 {
     if(!mCciConnected)
