@@ -181,6 +181,7 @@ int main (int argc, char *argv[])
             if(rgb && dataRGB)
             {
                 memcpy( frameRGB.data, dataRGB, 3*w*h*sizeof(uint8_t) );
+                cv::cvtColor(frameRGB,frameRGB, CV_RGB2BGR );
             }
             else if( !rgb && data16 )
             {
@@ -197,7 +198,7 @@ int main (int argc, char *argv[])
                 frame16.convertTo( frame8, CV_8UC1 );
                 // <<<<< Rescaling/Normalization to 8bit
 
-                cv::cvtColor(frame8,frameRGB, CV_GRAY2RGB ); // MPEG needs RGB frames
+                cv::cvtColor( frameRGB,frameRGB, CV_GRAY2RGB ); // MPEG needs RGB frames
             }
 
 #ifdef SAVE_MJPEG

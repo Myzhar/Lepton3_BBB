@@ -9,7 +9,8 @@
 #include "LEPTON_SYS.h"
 #include "LEPTON_AGC.h"
 #include "LEPTON_RAD.h"
-#include "LEPTON_OEM.h"
+//#include "LEPTON_OEM.h"
+#include "LEPTON_VID.h"
 
 #include <bitset>
 
@@ -835,16 +836,39 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
     if( enable )
     {
         newFormat = LEP_VIDEO_OUTPUT_FORMAT_RGB888;
+        
+        // >>>>> Disable Telemetry
+        if( LEP_SetSysTelemetryEnableState(&mCciConnPort, LEP_TELEMETRY_DISABLED ) != LEP_OK )
+        {
+            cerr << "Cannot disable Telemetry" << endl;
+
+            mBuffMutex.unlock();
+            return LEP_ERROR;
+        }
+        // <<<<< Disable Telemetry
+
+        // >>>>> Enable AGC
+        if( LEP_SetAgcEnableState(&mCciConnPort, LEP_AGC_ENABLE ) != LEP_OK ) // RGB888 requires AGC enabled
+        {
+            cerr << "Cannot enable AGC" << endl;
+        
+            mBuffMutex.unlock();
+            return LEP_ERROR;
+        }
+        // <<<<< Enable AGC
+        
+        // TODO Make function to set LUT
+        if( LEP_SetVidPcolorLut(&mCciConnPort,LEP_VID_RAINBOW_LUT) != LEP_OK ) // Default RGB LUT
+        {
+            cerr << "Cannot set LUT" << endl;
+        
+            mBuffMutex.unlock();
+            return LEP_ERROR;
+        }
     }
     else
     {
         newFormat = LEP_VIDEO_OUTPUT_FORMAT_RAW14;
-    }
-
-    if( enableAgc( enable ) != LEP_OK ) // RGB888 requires AGC enabled
-    {
-        mBuffMutex.unlock();
-        return LEP_ERROR;
     }
 
     if( newFormat != format )
@@ -862,6 +886,7 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
     }
     mBuffMutex.unlock();
 }
+
 
 /*LEP_RESULT Lepton3::getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h )
 {

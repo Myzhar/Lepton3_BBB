@@ -82,6 +82,7 @@ public:
 
     LEP_RESULT getVideoOutputFormat( LEP_OEM_VIDEO_OUTPUT_FORMAT_E& format  ); //!< Get Video Output format
     LEP_RESULT enableRgbOutput( bool enable ); //!< Enable/Disable RGB video output format
+    LEP_RESULT setRgbLut( ); //!< Set RGB LUT
 
     // TODO Add function to set RGB palette
 
