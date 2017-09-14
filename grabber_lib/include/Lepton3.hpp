@@ -80,8 +80,12 @@ public:
 
     // TODO Add telemetry parsing function
 
-    LEP_RESULT getOutputFormat( LEP_OEM_VIDEO_OUTPUT_FORMAT_E& format  );
-    LEP_RESULT enableRgbOutput( bool enable );
+    LEP_RESULT getVideoOutputFormat( LEP_OEM_VIDEO_OUTPUT_FORMAT_E& format  ); //!< Get Video Output format
+    LEP_RESULT enableRgbOutput( bool enable ); //!< Enable/Disable RGB video output format
+
+    // TODO Add function to set RGB palette
+
+    bool isRgbEnable(){return mRgbEnabled;} //!< Verify if RGB video format is enabled
     
     // >>>>> Not yet available on Lepton3
     

@@ -94,7 +94,7 @@ void Lepton3::setVoSPIData()
 
     // >>>>> Check Packet Size
     LEP_OEM_VIDEO_OUTPUT_FORMAT_E format;
-    if( getOutputFormat( format ) == LEP_OK )
+    if( getVideoOutputFormat( format ) == LEP_OK )
     {
         if( format==LEP_VIDEO_OUTPUT_FORMAT_RGB888 )
         {
@@ -790,7 +790,7 @@ LEP_RESULT Lepton3::getGainMode( LEP_SYS_GAIN_MODE_E& mode)
     return LEP_OK;
 }
 
-LEP_RESULT Lepton3::getOutputFormat( LEP_OEM_VIDEO_OUTPUT_FORMAT_E& format  )
+LEP_RESULT Lepton3::getVideoOutputFormat( LEP_OEM_VIDEO_OUTPUT_FORMAT_E& format  )
 {
     if(!mCciConnected)
     {
@@ -819,7 +819,7 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
 
     LEP_OEM_VIDEO_OUTPUT_FORMAT_E format,newFormat;
 
-    if( getOutputFormat( format) != LEP_OK )
+    if( getVideoOutputFormat( format) != LEP_OK )
     {
         mBuffMutex.unlock();
         return LEP_ERROR;
