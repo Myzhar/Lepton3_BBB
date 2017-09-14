@@ -834,6 +834,12 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
         newFormat = LEP_VIDEO_OUTPUT_FORMAT_RAW14;
     }
 
+    if( enableAgc( enable ) != LEP_OK ) // RGB888 requires AGC enabled
+    {
+        mBuffMutex.unlock();
+        return LEP_ERROR;
+    }
+
     if( newFormat != format )
     {
         if( LEP_SetOemVideoOutputFormat( &mCciConnPort, newFormat ) != LEP_OK )
