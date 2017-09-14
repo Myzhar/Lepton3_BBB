@@ -9,6 +9,7 @@
 #include "LEPTON_SYS.h"
 #include "LEPTON_AGC.h"
 #include "LEPTON_RAD.h"
+#include "LEPTON_OEM.h"
 
 #include <bitset>
 
@@ -22,28 +23,22 @@ using namespace std;
 Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     : mThread()
     , mSpiRawFrameBuf(NULL)
+    , mDataFrameBuf16(NULL)
+    , mDataFrameBufRGB(NULL)
+    , mRgbEnabled(false)
 {
+    // >>>>> CCI
+    mCciPort = cciPort;
+    // <<<<< CCI
+
     // >>>>> VoSPI
     mSpiDevice = spiDevice;
     mSpiFd = -1;
 
-    mSpiMode = SPI_MODE_3; // CPOL=1 (Clock Idle high level), 
-                           // CPHA=1 (SDO transmit/change edge idle to active)
+    mSpiMode = SPI_MODE_3; // CPOL=1 (Clock Idle high level),
+    // CPHA=1 (SDO transmit/change edge idle to active)
     mSpiBits = 8;
     mSpiSpeed = 32500000; // Max available SPI speed (according to Lepton3 datasheet)
-
-    mPacketCount  = 60;  // default no Telemetry
-    mPacketSize   = 164; // default 14 bit raw data
-    mSegmentCount = 4;   // 4 segments for each unique frame
-
-    mSegmentFreq = 106.0f; // According to datasheet each segment is ready at 106 Hz
-    
-    mSegmSize = mPacketCount*mPacketSize;
-    mSpiRawFrameBufSize = mSegmSize*mSegmentCount;
-
-    mSpiRawFrameBuf = new uint8_t[mSpiRawFrameBufSize];
-    
-    mDataFrameBuf = new uint16_t[FRAME_W*FRAME_H];
 
     mSpiTR.tx_buf = (unsigned long)NULL;
     mSpiTR.delay_usecs = 50;
@@ -55,9 +50,12 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     mSpiTR.pad = 0;
     // <<<<< VoSPI
 
-    // >>>>> CCI
-    mCciPort = cciPort;
-    // <<<<< CCI
+    setVoSPIData();
+
+    // >>>>> Output Frame buffers
+    mDataFrameBuf16 = new uint16_t[FRAME_W*FRAME_H];
+    mDataFrameBufRGB = new uint8_t[FRAME_W*FRAME_H*3];
+    // <<<<< Output Frame buffers
 
     mDebugLvl = dbgLvl;
 
@@ -74,9 +72,61 @@ Lepton3::~Lepton3()
 
     if(mSpiRawFrameBuf)
         delete [] mSpiRawFrameBuf;
-        
-    if(mDataFrameBuf)
-        delete [] mDataFrameBuf;
+
+    if(mDataFrameBuf16)
+        delete [] mDataFrameBuf16;
+
+    if(mDataFrameBufRGB)
+        delete [] mDataFrameBufRGB;
+}
+
+void Lepton3::setVoSPIData()
+{
+    mPacketCount  = 60;  // default no Telemetry
+
+    // >>>>> Check Telemetry
+    bool telemEnable;
+    if( getTelemetryStatus( telemEnable ) == LEP_OK )
+    {
+        mPacketCount = 61;
+    }
+    // <<<<< Check Telemetry
+
+    // >>>>> Check Packet Size
+    LEP_OEM_VIDEO_OUTPUT_FORMAT_E format;
+    if( getOutputFormat( format ) == LEP_OK )
+    {
+        if( format==LEP_VIDEO_OUTPUT_FORMAT_RGB888 )
+        {
+            mPacketSize = 244;
+            mRgbEnabled = true;
+        }
+        else
+        {
+            mPacketSize = 164;
+            mRgbEnabled = false;
+        }
+    }
+    else
+    {
+        mPacketSize   = 164; // default 14 bit raw data
+        mRgbEnabled = false;
+    }
+    // <<<<< Check Packet Size
+
+
+    mSegmentCount = 4;   // 4 segments for each unique frame
+
+    mSegmSize = mPacketCount*mPacketSize;
+    mSpiRawFrameBufSize = mSegmSize*mSegmentCount;
+
+    if(mSpiRawFrameBuf)
+    {
+        delete [] mSpiRawFrameBuf;
+        mSpiRawFrameBuf = NULL;
+    }
+    mSpiRawFrameBuf = new uint8_t[mSpiRawFrameBufSize];
+    // <<<<< VoSPI data
 }
 
 bool Lepton3::start()
@@ -247,7 +297,7 @@ int Lepton3::SpiReadSegment()
     *********************************************************************************************/
 
     // >>>>> Segment ID
-    // Segment ID is written in the 21th Packet int the bit 1-3 of the first byte 
+    // Segment ID is written in the 21th Packet int the bit 1-3 of the first byte
     // (the first bit is always 0)
     // Packet number is written in the bit 4-7 of the first byte
 
@@ -303,6 +353,8 @@ void Lepton3::thread_func()
 
     while(true)
     {
+        mBuffMutex.lock();
+
         // >>>>> Timing info
         double threadPeriod = mThreadWatch.toc(); // Get thread by thread time
         mThreadWatch.tic();
@@ -311,16 +363,18 @@ void Lepton3::thread_func()
 
         if( mDebugLvl>=DBG_FULL )
         {
-            cout << endl << "Thread period: " << threadPeriod << " usec - VoSPI Available: " 
-                << usecAvail << " usec" << endl;
+            cout << endl << "Thread period: " << threadPeriod << " usec - VoSPI Available: "
+                 << usecAvail << " usec" << endl;
         }
 
         if( mDebugLvl>=DBG_INFO )
         {
-            cout << "VoSPI segment acquire freq: " << (1000.0*1000.0)/threadPeriod 
-                << " hz" << endl;
+            cout << "VoSPI segment acquire freq: " << (1000.0*1000.0)/threadPeriod
+                 << " hz" << endl;
         }
         // <<<<< Timing info
+
+
 
         // >>>>> Acquire single segment
         if( mDebugLvl>=DBG_FULL )
@@ -373,18 +427,25 @@ void Lepton3::thread_func()
 
                     if( mDebugLvl>=DBG_FULL )
                     {
-                        cout << endl 
-                            << "************************ FRAME COMPLETE " \
+                        cout << endl
+                             << "************************ FRAME COMPLETE " \
                                 "************************" << endl;
                     }
 
-                    // >>>>> RAW to 16bit data conversion
+                    // >>>>> RAW to image data conversion
                     if( mDebugLvl>=DBG_FULL )
                     {
                         testTime2.tic();
                     }
 
-                    raw2data16();
+                    if( mRgbEnabled )
+                    {
+                        raw2RGB();
+                    }
+                    else
+                    {
+                        raw2data16();
+                    }
 
                     if( mDebugLvl>=DBG_FULL )
                     {
@@ -393,8 +454,8 @@ void Lepton3::thread_func()
                     }
 
                     mDataValid = true;
-                    // <<<<< RAW to 16bit data conversion
-                }                
+                    // <<<<< RAW to image data conversion
+                }
             }
             else
             {
@@ -425,9 +486,9 @@ void Lepton3::thread_func()
         }
         // <<<<< Segment check
         
-        // According to datasheet, after 4 valid segments (ID 1,2,3,4) we should 
+        // According to datasheet, after 4 valid segments (ID 1,2,3,4) we should
         // read 8 not valid segments (ID 0)
-        // If the number of not valid segments is higher than 8 we need to resync 
+        // If the number of not valid segments is higher than 8 we need to resync
         // the host with the device
         if( notValidCount>=10 )
         {
@@ -435,6 +496,8 @@ void Lepton3::thread_func()
             
             notValidCount=0;
         }
+
+        mBuffMutex.unlock();
 
         if( mStop )
         {
@@ -537,6 +600,70 @@ LEP_RESULT Lepton3::lepton_perform_ffc()
 
     return LEP_OK;
 }
+
+LEP_RESULT Lepton3::enableTelemetry( bool enable )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    mBuffMutex.lock();
+
+    LEP_SYS_TELEMETRY_ENABLE_STATE_E tel_status;
+
+    if( LEP_GetSysTelemetryEnableState(&mCciConnPort, (LEP_SYS_TELEMETRY_ENABLE_STATE_E_PTR)&tel_status ) != LEP_OK )
+    {
+        cerr << "Cannot read Telemetry status" << endl;
+
+        mBuffMutex.unlock();
+        return LEP_ERROR;
+    }
+
+    LEP_SYS_TELEMETRY_ENABLE_STATE_E new_status = enable?LEP_TELEMETRY_ENABLED:LEP_TELEMETRY_DISABLED;
+
+    if( tel_status != new_status )
+    {
+        if( LEP_SetSysTelemetryEnableState(&mCciConnPort, new_status ) != LEP_OK )
+        {
+            cerr << "Cannot set Telemetry status" << endl;
+
+            mBuffMutex.unlock();
+            return LEP_ERROR;
+        }
+
+        setVoSPIData();
+    }
+
+    mBuffMutex.unlock();
+    return LEP_OK;
+}
+
+LEP_RESULT Lepton3::getTelemetryStatus( bool &status )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    LEP_SYS_TELEMETRY_ENABLE_STATE_E tel_status;
+
+    if( LEP_GetSysTelemetryEnableState(&mCciConnPort, (LEP_SYS_TELEMETRY_ENABLE_STATE_E_PTR)&tel_status ) != LEP_OK )
+    {
+        cerr << "Cannot read Telemetry status" << endl;
+        return LEP_ERROR;
+    }
+
+    if( tel_status == LEP_TELEMETRY_ENABLED )
+        status = true;
+    else
+        status = false;
+
+    return LEP_OK;
+}
+
 
 LEP_RESULT Lepton3::getRadiometryStatus( bool& status )
 {
@@ -663,6 +790,66 @@ LEP_RESULT Lepton3::getGainMode( LEP_SYS_GAIN_MODE_E& mode)
     return LEP_OK;
 }
 
+LEP_RESULT Lepton3::getOutputFormat( LEP_OEM_VIDEO_OUTPUT_FORMAT_E& format  )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    if( LEP_GetOemVideoOutputFormat( &mCciConnPort, (LEP_OEM_VIDEO_OUTPUT_FORMAT_E_PTR)&format ) != LEP_OK )
+    {
+        cerr << "Cannot read Video Output format" << endl;
+        return LEP_ERROR;
+    }
+
+    return LEP_OK;
+}
+
+LEP_RESULT Lepton3::enableRgbOutput( bool enable )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    mBuffMutex.lock();
+
+    LEP_OEM_VIDEO_OUTPUT_FORMAT_E format,newFormat;
+
+    if( getOutputFormat( format) != LEP_OK )
+    {
+        mBuffMutex.unlock();
+        return LEP_ERROR;
+    }
+
+    if( enable )
+    {
+        newFormat = LEP_VIDEO_OUTPUT_FORMAT_RGB888;
+    }
+    else
+    {
+        newFormat = LEP_VIDEO_OUTPUT_FORMAT_RAW14;
+    }
+
+    if( newFormat != format )
+    {
+        if( LEP_SetOemVideoOutputFormat( &mCciConnPort, newFormat ) != LEP_OK )
+        {
+            cerr << "Cannot set Video Output format" << endl;
+
+            mBuffMutex.unlock();
+            return LEP_ERROR;
+        }
+
+        // Update data buffers!
+        setVoSPIData();
+    }
+    mBuffMutex.unlock();
+}
+
 /*LEP_RESULT Lepton3::getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h )
 {
     if(!mCciConnected)
@@ -756,10 +943,10 @@ void Lepton3::raw2data16()
         //uint16_t value = (((uint16_t*)mSpiRawFrameBuf)[i]);
         
         int temp = mSpiRawFrameBuf[i*2];
-			mSpiRawFrameBuf[i*2] = mSpiRawFrameBuf[i*2+1];
-			mSpiRawFrameBuf[i*2+1] = temp;
-			
-	    uint16_t value = frameBuffer[i];
+        mSpiRawFrameBuf[i*2] = mSpiRawFrameBuf[i*2+1];
+        mSpiRawFrameBuf[i*2+1] = temp;
+
+        uint16_t value = frameBuffer[i];
         
         //cout << value << " ";
 
@@ -774,21 +961,47 @@ void Lepton3::raw2data16()
                 mMin = value;
         }
 
-        mDataFrameBuf[pixIdx] = value;
+        mDataFrameBuf16[pixIdx] = value;
         pixIdx++;
     }
     
     if( mDebugLvl>=DBG_INFO )
     {
-        cout << endl << "Min: " << mMin << " - Max: " << mMax << endl;    
+        cout << endl << "Min: " << mMin << " - Max: " << mMax << endl;
         cout << "---------------------------------------------------" << endl;
     }
     
     // cout << pixIdx << endl;
 }
 
-const uint16_t* Lepton3::getLastFrame( uint8_t& width, uint8_t& height, uint16_t* min/*=NULL*/, uint16_t* max/*=NULL*/ )
+void Lepton3::raw2RGB()
 {
+    int byteCount = mSpiRawFrameBufSize;
+    int pxPackSize = mPacketSize;
+
+    uint8_t* frameBuffer = mSpiRawFrameBuf;
+
+    int pixIdx = 0;
+    for(int i=0; i<byteCount; i++)
+    {
+        //skip the first 4 uint8_t's of every packet, they're 4 header bytes
+        if(i % pxPackSize < 4)
+        {
+            continue;
+        }
+
+        mDataFrameBufRGB[pixIdx] = mSpiRawFrameBuf[i];
+        pixIdx++;
+    }
+
+    // cout << pixIdx << endl;
+}
+
+const uint16_t* Lepton3::getLastFrame16( uint8_t& width, uint8_t& height, uint16_t* min/*=NULL*/, uint16_t* max/*=NULL*/ )
+{
+    if( mRgbEnabled )
+        return NULL;
+
     if( !mDataValid )
         return NULL;
 
@@ -807,5 +1020,21 @@ const uint16_t* Lepton3::getLastFrame( uint8_t& width, uint8_t& height, uint16_t
         *max = mMax;
     }
     
-    return mDataFrameBuf;
+    return mDataFrameBuf16;
+}
+
+const uint8_t* Lepton3::getLastFrameRGB( uint8_t& width, uint8_t& height )
+{
+    if( !mRgbEnabled )
+        return NULL;
+
+    if( !mDataValid )
+        return NULL;
+
+    mDataValid = false;
+
+    width = FRAME_W;
+    height = FRAME_H;
+
+    return mDataFrameBufRGB;
 }

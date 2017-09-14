@@ -118,8 +118,8 @@ int main (int argc, char *argv[])
     LEP_SYS_GAIN_MODE_E gainMode;
     if( lepton3.getGainMode( gainMode ) == LEP_OK )
     {
-        cout << " * Gain mode: " << gainMode << endl;
-            //(gainMode==LEP_SYS_GAIN_MODE_HIGH)?"High":((gainMode==LEP_SYS_GAIN_MODE_LOW)?"Low":"Auto") << endl;
+        string str = (gainMode==LEP_SYS_GAIN_MODE_HIGH)?string("High"):((gainMode==LEP_SYS_GAIN_MODE_LOW)?string("Low"):string("Auto"));
+        cout << " * Gain mode: " << str << endl;
     }
     
 	lepton3.start();
@@ -135,7 +135,8 @@ int main (int argc, char *argv[])
         uint16_t min;
         uint16_t max;	
         uint8_t w,h;
-        const uint16_t* data = lepton3.getLastFrame( w, h, &min, &max );
+
+        const uint16_t* data = lepton3.getLastFrame16( w, h, &min, &max );
 		
         if( data )
 		{
