@@ -16,7 +16,7 @@
 // >>>>> Demo configuration
 #define SAVE_MJPEG 1 // Comment to save frames to PNG images
 
-#define USE_RADIOMETRY true
+#define USE_RADIOMETRY false
 #define USE_RGB true
 // <<<<< Demo configuration
 
@@ -116,6 +116,15 @@ int main (int argc, char *argv[])
         {
             cout << " * AGC enabled " << endl;
         }
+    }
+    
+    if( lepton3.enableTelemetry( false ) < 0 )
+    {
+        cerr << "Failed to disable telemetry" << endl;
+    }
+    else
+    {
+        cout << " * Telemetry disabled " << endl;
     }
 
     if( lepton3.enableRgbOutput( USE_RGB ) < 0 )

@@ -88,7 +88,10 @@ void Lepton3::setVoSPIData()
     bool telemEnable;
     if( getTelemetryStatus( telemEnable ) == LEP_OK )
     {
-        mPacketCount = 61;
+        if( telemEnable )
+        {
+            mPacketCount = 61;
+        }
     }
     // <<<<< Check Telemetry
 
@@ -657,9 +660,13 @@ LEP_RESULT Lepton3::getTelemetryStatus( bool &status )
     }
 
     if( tel_status == LEP_TELEMETRY_ENABLED )
+    {
         status = true;
+        }
     else
+    {
         status = false;
+    }
 
     return LEP_OK;
 }
@@ -988,19 +995,23 @@ void Lepton3::raw2RGB()
     uint8_t* frameBuffer = mSpiRawFrameBuf;
 
     int pixIdx = 0;
+    int headCount = 0;
     for(int i=0; i<byteCount; i++)
     {
         //skip the first 4 uint8_t's of every packet, they're 4 header bytes
         if(i % pxPackSize < 4)
         {
+            headCount++;
+            //cout << i << "(" << pixIdx << ") ";
             continue;
         }
 
-        mDataFrameBufRGB[pixIdx] = mSpiRawFrameBuf[i];
+        mDataFrameBufRGB[pixIdx] = frameBuffer[i];
+        //cout << "byteCount: " << byteCount << " - pxPackSize: " << pxPackSize;
+        //cout << " - Idx: " << pixIdx << " - i: " << i << endl;  
         pixIdx++;
     }
 
-    // cout << pixIdx << endl;
 }
 
 const uint16_t* Lepton3::getLastFrame16( uint8_t& width, uint8_t& height, uint16_t* min/*=NULL*/, uint16_t* max/*=NULL*/ )
