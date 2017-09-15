@@ -858,7 +858,7 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
         // <<<<< Enable AGC
         
         // TODO Make function to set LUT
-        if( LEP_SetVidPcolorLut(&mCciConnPort,LEP_VID_RAINBOW_LUT) != LEP_OK ) // Default RGB LUT
+        if( LEP_SetVidPcolorLut(&mCciConnPort,LEP_VID_FUSION_LUT) != LEP_OK ) // Default RGB LUT
         {
             cerr << "Cannot set LUT" << endl;
         

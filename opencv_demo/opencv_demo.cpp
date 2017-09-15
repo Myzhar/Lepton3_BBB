@@ -16,7 +16,6 @@
 // >>>>> Demo configuration
 #define SAVE_MJPEG 1 // Comment to save frames to PNG images
 
-#define USE_RADIOMETRY false
 #define USE_RGB true
 // <<<<< Demo configuration
 
@@ -83,13 +82,13 @@ int main (int argc, char *argv[])
 
     Lepton3 lepton3( "/dev/spidev1.0", 1, deb_lvl );
     
-    if( lepton3.enableRadiometry( USE_RADIOMETRY ) < 0)
+    if( lepton3.enableRadiometry( !USE_RGB ) < 0)
     {
         cerr << "Failed to set radiometry status" << endl;
     }
     else
     {
-        if(USE_RADIOMETRY)
+        if(!USE_RGB)
         {
             cout << " * Radiometry enabled " << endl;
         }
@@ -102,13 +101,13 @@ int main (int argc, char *argv[])
     // NOTE: if radiometry is enabled is unuseful to keep AGC enabled
     //       (see "FLIR LEPTON 3® Long Wave Infrared (LWIR) Datasheet" for more info)
     
-    if( lepton3.enableAgc( !USE_RADIOMETRY ) < 0)
+    if( lepton3.enableAgc( USE_RGB ) < 0)
     {
         cerr << "Failed to set radiometry status" << endl;
     }
     else
     {
-        if(USE_RADIOMETRY)
+        if(!USE_RGB)
         {
             cout << " * AGC disabled " << endl;
         }
@@ -116,15 +115,6 @@ int main (int argc, char *argv[])
         {
             cout << " * AGC enabled " << endl;
         }
-    }
-    
-    if( lepton3.enableTelemetry( false ) < 0 )
-    {
-        cerr << "Failed to disable telemetry" << endl;
-    }
-    else
-    {
-        cout << " * Telemetry disabled " << endl;
     }
 
     if( lepton3.enableRgbOutput( USE_RGB ) < 0 )
