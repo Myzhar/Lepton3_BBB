@@ -13,5 +13,8 @@ set (CMAKE_CXX_STANDARD 11)
 # Library source code
 add_subdirectory (grabber_lib)
 
-# GStreamer demo
+# OpenCV demo
 add_subdirectory (opencv_demo)
+
+# GStreamer demo
+add_subdirectory (gstreamer_demo)
