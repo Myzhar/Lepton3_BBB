@@ -15,6 +15,8 @@
 
 #include "stopwatch.hpp"
 
+#include <gst/gst.h>
+
 // >>>>> Demo configuration
 #define USE_RGB true
 // <<<<< Demo configuration
@@ -32,8 +34,10 @@ void close_handler(int s)
     }
 }
 
-int main (int argc, char *argv[])
+int main( int   argc, char *argv[] )
 {
+    gst_init( &argc, &argv );
+
     cout << "OpenCV demo for Lepton3 on BeagleBoard Blue" << endl;
 
     // >>>>> Enable Ctrl+C
@@ -73,7 +77,7 @@ int main (int argc, char *argv[])
     videoEncoder* gstEncoder = NULL;
 
     gstEncoder = videoEncoder::Create( 160, 120,
-                                       "eth0",
+                                       "wlan0",
                                        "239.0.0.105",
                                        16000,
                                        8000000,

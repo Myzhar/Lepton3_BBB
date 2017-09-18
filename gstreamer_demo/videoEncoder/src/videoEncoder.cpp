@@ -338,7 +338,7 @@ bool videoEncoder::PushFrame( uint8_t* buf )
 bool videoEncoder::buildCapsStr()
 {
     std::ostringstream ss;
-    ss << "video/x-raw, format=I420, framerate=25/1, width=" << mWidth << ", height=" << mHeight << " "; // v1.0
+    ss << "video/x-raw, format=I420, framerate=9/1, width=" << mWidth << ", height=" << mHeight << " "; // v1.0
 
     mCapsStr = ss.str();
 

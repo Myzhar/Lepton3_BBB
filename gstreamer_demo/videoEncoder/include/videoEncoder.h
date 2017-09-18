@@ -22,7 +22,7 @@ public:
     bool PushFrame(uint8_t* buf ); // YUV format!!!
 
 private:
-    videoEncoder(uint32_t width, uint32_t height , std::__cxx11::string multicastIface, uint32_t bitrate, std::string encName );
+    videoEncoder(uint32_t width, uint32_t height , std::string multicastIface, uint32_t bitrate, std::string encName );
     bool init();
 
     static void onNeed(_GstElement* pipeline, uint32_t size, void* user_data);
