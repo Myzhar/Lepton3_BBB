@@ -130,7 +130,7 @@ gboolean gst_message_print(GstBus* bus, GstMessage* message, gpointer user_data)
 
         printf( "gstreamer %s %s\n", GST_OBJECT_NAME(message->src), txt);
 
-        g_free(txt);
+        //g_free(txt);
         //gst_tag_list_foreach(tags, gst_print_one_tag, NULL);
         gst_tag_list_free(tags);
         break;
@@ -268,7 +268,7 @@ bool videoEncoder::PushFrame( uint8_t* buf )
 
     if( !mNeedData )
     {
-        msgOut( "***  No data needed ***" );
+        //msgOut( "***  No data needed ***" );
         return true;
     }
 
@@ -353,22 +353,24 @@ bool videoEncoder::buildLaunchStr()
     const size_t ipLen   = mOutputIP.size();
 
     std::ostringstream ss;
-    ss << "appsrc name=mysource ! ";
+    ss << "appsrc name=mysource is-live=true ! ";
     ss << mCapsStr.c_str();
     ss << " ! queue";
-    ss << " ! omxh264enc ";
+    ss << " ! x264enc ";
+    ss << "key-int-max=1 ";
+    ss << "tune=zerolatency ";
     ss << "bitrate=" << mBitRate << " "; // H264 encoder bitrate
 
-    ss << "insert-sps-pps=true ";        // insert-sps-pps=true needed to start client after server!!!
+    //ss << "insert-sps-pps=true ";        // insert-sps-pps=true needed to start client after server!!!
 
     //ss << "control-rate=2 ";
     //ss << "low-latency=true ";
 
-    ss << "quant-i-frames=5 ";
-    ss << "quant-p-frames=2 ";
-    ss << "quant-b-frames=2 ";
-    ss << "iframeinterval=1 ";
-    ss << "quality-level=2 ";
+    //ss << "quant-i-frames=5 ";
+    //ss << "quant-p-frames=2 ";
+    //ss << "quant-b-frames=2 ";
+    //ss << "iframeinterval=1 ";
+    //ss << "quality-level=2 ";
     ss << "! ";
 
 
@@ -398,9 +400,10 @@ bool videoEncoder::buildLaunchStr()
 
     if( ipLen > 0 )
     {
-        ss << "rtph264pay ";
+        ss << "rtph264pay "; 
         ss << "pt=96 ";
         ss << "config-interval=1 ";
+        ss << "mtu=1500 ";
         ss << "! ";
         ss << "queue ! ";
         ss << "udpsink host=";

@@ -78,10 +78,12 @@ int main( int   argc, char *argv[] )
 
     gstEncoder = videoEncoder::Create( 160, 120,
                                        "wlan0",
-                                       "239.0.0.105",
+                                       "239.0.0.115",
                                        16000,
-                                       8000000,
+                                       1024,
                                        "gst_encoder");
+                                       
+    gstEncoder->Open();
     // <<<<< Create GStreamer encoder
 
     Lepton3 lepton3( "/dev/spidev1.0", 1, deb_lvl );
@@ -200,6 +202,11 @@ int main( int   argc, char *argv[] )
             {
                 cv::cvtColor( frameRGB, frameYUV, cv::COLOR_RGB2YUV_I420 );
                 gstEncoder->PushFrame( (uint8_t*)frameYUV.data );
+                
+                if( deb_lvl>=Lepton3::DBG_FULL  )
+                {
+                    cout << "Frame pushed" << endl;
+                }
             }
 
             frameIdx++;
