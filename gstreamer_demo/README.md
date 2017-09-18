@@ -11,4 +11,5 @@ Debug level:
 * 2: full debug messages
 
 To receive the stream:
-```gst-launch-1.0 udpsrc address=239.0.0.115 port=16000 multicast-iface="wlan0" ! application/x-rtp, media=video, clock-rate=90000, encoding-name=H264 ! rtph264depay ! avdec_h264 ! videoconvert ! autovideosink```
+
+```$ gst-launch-1.0 udpsrc address=239.0.0.115 port=16000 multicast-iface="wlan0" ! application/x-rtp, media=video, clock-rate=90000, encoding-name=H264 ! rtph264depay ! avdec_h264 ! videoconvert ! autovideosink```
