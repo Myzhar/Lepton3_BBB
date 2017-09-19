@@ -77,8 +77,10 @@ int main( int   argc, char *argv[] )
     videoEncoder* gstEncoder = NULL;
 
     gstEncoder = videoEncoder::Create( 160, 120,
-                                       "wlan0",
-                                       "239.0.0.115",
+                                       "wlan0", // Interface for MULTICAST
+                                       "239.0.0.115", // MULTICAST IP Address
+                                       //"", // Empty interface for UNICAST
+                                       //"192.168.1.61", // Dest IP for UNICAST 
                                        16000,
                                        1024,
                                        "gst_encoder");
@@ -217,7 +219,7 @@ int main( int   argc, char *argv[] )
             }
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(110));
     }
 
     lepton3.stop();
