@@ -98,6 +98,9 @@ Lepton3::~Lepton3()
 
 void Lepton3::setVoSPIData()
 {
+    // NOTE: DO NOT LOCK THE MUTEX!!!
+    // setVoSPIData is always called inside a "mutex block"
+
     mPacketCount  = 60;  // default no Telemetry
 
     // >>>>> Check Telemetry
@@ -382,6 +385,8 @@ void Lepton3::thread_func()
 
     while(true)
     {
+        mDataValid[mBuffIdx] = false; // Invalidate the current buffer before locking
+
         mBuffMutex.lock();
 
         // >>>>> Timing info
@@ -984,6 +989,9 @@ LEP_RESULT Lepton3::getSpotInfo( float& valueK, float& minK, float& maxK, uint16
 
 void Lepton3::raw2data16()
 {
+    // NOTE: DO NOT LOCK THE MUTEX!!!
+    // raw2data16 is always called inside a "mutex block"
+
     int wordCount = mSpiRawFrameBufSize/2;
     int wordPackSize = mPacketSize/2;
 
@@ -1040,6 +1048,9 @@ void Lepton3::raw2data16()
 
 void Lepton3::raw2RGB()
 {
+    // NOTE: DO NOT LOCK THE MUTEX!!!
+    // raw2RGB is always called inside a "mutex block"
+
     int byteCount = mSpiRawFrameBufSize;
     int pxPackSize = mPacketSize;
 
