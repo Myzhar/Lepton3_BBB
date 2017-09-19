@@ -19,6 +19,8 @@
 
 #include "stopwatch.hpp"
 
+#define MULTI_BUFF_SIZE 2
+
 class Lepton3
 {
 public:     
@@ -118,11 +120,13 @@ private:
     uint8_t mSegmentCount;  //!< VoSPI segment for each frame
     uint32_t mSegmSize;     //!< Size of the single segment
 
-    uint8_t* mSpiRawFrameBuf;      //!< VoSPI buffer to keep 4 consecutive valid segments
+    uint8_t* mSpiRawFrameBuf[MULTI_BUFF_SIZE];      //!< VoSPI buffer to keep 4 consecutive valid segments
     uint32_t mSpiRawFrameBufSize;  //!< Size of the buffer for 4 segments
 
-    uint16_t* mDataFrameBuf16;      //!< RAW 16bit frame buffer
-    uint8_t* mDataFrameBufRGB;      //!< RGB888 frame buffer
+    uint16_t* mDataFrameBuf16[MULTI_BUFF_SIZE];      //!< RAW 16bit frame buffer
+    uint8_t* mDataFrameBufRGB[MULTI_BUFF_SIZE];      //!< RGB888 frame buffer
+
+    int mBuffIdx;
 
     double mSegmentFreq;    //!< VoSPI Segment output frequency
     
@@ -148,7 +152,7 @@ private:
     
     StopWatch mThreadWatch;
 
-    bool mDataValid;
+    bool mDataValid[MULTI_BUFF_SIZE];
     
     uint16_t mMin;
     uint16_t mMax;

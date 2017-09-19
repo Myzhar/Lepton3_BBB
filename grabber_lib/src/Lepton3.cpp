@@ -23,14 +23,21 @@ using namespace std;
 
 Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     : mThread()
-    , mSpiRawFrameBuf(NULL)
-    , mDataFrameBuf16(NULL)
-    , mDataFrameBufRGB(NULL)
     , mRgbEnabled(false)
 {
     // >>>>> CCI
     mCciPort = cciPort;
     // <<<<< CCI
+
+    // >>>>> Multi buffer init
+    for( int i=0; i<MULTI_BUFF_SIZE; i++ )
+    {
+        mSpiRawFrameBuf[i] = NULL;
+        mDataFrameBuf16[i] = NULL;
+        mDataFrameBufRGB[i] = NULL;
+    }
+    mBuffIdx=0;
+    // <<<<< Multi buffer init
 
     // >>>>> VoSPI
     mSpiDevice = spiDevice;
@@ -54,8 +61,12 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     setVoSPIData();
 
     // >>>>> Output Frame buffers
-    mDataFrameBuf16 = new uint16_t[FRAME_W*FRAME_H];
-    mDataFrameBufRGB = new uint8_t[FRAME_W*FRAME_H*3];
+    for( int i=0; i<MULTI_BUFF_SIZE; i++ )
+    {
+        mDataFrameBuf16[i] = new uint16_t[FRAME_W*FRAME_H];
+        mDataFrameBufRGB[i] = new uint8_t[FRAME_W*FRAME_H*3];
+        mDataValid[i] = false;
+    }
     // <<<<< Output Frame buffers
 
     mDebugLvl = dbgLvl;
@@ -64,25 +75,32 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
         cout << "Debug level: " << mDebugLvl << endl;
 
     mStop = false;
-    mDataValid = false;
+
 }
 
 Lepton3::~Lepton3()
 {
     stop();
 
-    if(mSpiRawFrameBuf)
-        delete [] mSpiRawFrameBuf;
+    for( int i=0; i<MULTI_BUFF_SIZE; i++ )
+    {
 
-    if(mDataFrameBuf16)
-        delete [] mDataFrameBuf16;
+        if(mSpiRawFrameBuf[i])
+            delete [] mSpiRawFrameBuf[i];
 
-    if(mDataFrameBufRGB)
-        delete [] mDataFrameBufRGB;
+        if(mDataFrameBuf16[i])
+            delete [] mDataFrameBuf16[i];
+
+        if(mDataFrameBufRGB[i])
+            delete [] mDataFrameBufRGB[i];
+    }
 }
 
 void Lepton3::setVoSPIData()
 {
+    // NOTE: DO NOT LOCK THE MUTEX!!!
+    // setVoSPIData is always called inside a "mutex block"
+
     mPacketCount  = 60;  // default no Telemetry
 
     // >>>>> Check Telemetry
@@ -124,12 +142,19 @@ void Lepton3::setVoSPIData()
     mSegmSize = mPacketCount*mPacketSize;
     mSpiRawFrameBufSize = mSegmSize*mSegmentCount;
 
-    if(mSpiRawFrameBuf)
+    for( int i=0; i<MULTI_BUFF_SIZE; i++ )
     {
-        delete [] mSpiRawFrameBuf;
-        mSpiRawFrameBuf = NULL;
+        if(mSpiRawFrameBuf[i])
+        {
+            delete [] mSpiRawFrameBuf[i];
+            mSpiRawFrameBuf[i] = NULL;
+        }
+        mSpiRawFrameBuf[i] = new uint8_t[mSpiRawFrameBufSize];
+
+        mDataValid[i] = false;
     }
-    mSpiRawFrameBuf = new uint8_t[mSpiRawFrameBufSize];
+
+    mBuffIdx = 0;
     // <<<<< VoSPI data
 }
 
@@ -244,7 +269,7 @@ int Lepton3::SpiReadSegment()
     /*********************************************************************************************
     1) Calculate the address of the segment buffer in the "full frame" buffer [mSpiFrameBuf]
     *********************************************************************************************/
-    uint8_t* segmentAddr = mSpiRawFrameBuf+(mCurrSegm*mSegmSize);
+    uint8_t* segmentAddr = mSpiRawFrameBuf[mBuffIdx]+(mCurrSegm*mSegmSize);
     
     /*********************************************************************************************
     2) Wait for the first valid packet
@@ -353,10 +378,15 @@ void Lepton3::thread_func()
 
     StopWatch testTime1, testTime2;
 
-    mDataValid = false;
+    for( int i=0; i<MULTI_BUFF_SIZE; i++ )
+    {
+        mDataValid[i] = false;
+    }
 
     while(true)
     {
+        mDataValid[mBuffIdx] = false; // Invalidate the current buffer before locking
+
         mBuffMutex.lock();
 
         // >>>>> Timing info
@@ -456,8 +486,6 @@ void Lepton3::thread_func()
                         double elapsed = testTime2.toc();
                         cout << "VoSPI frame conversion time " << elapsed << " usec" << endl;
                     }
-
-                    mDataValid = true;
                     // <<<<< RAW to image data conversion
                 }
             }
@@ -663,7 +691,7 @@ LEP_RESULT Lepton3::getTelemetryStatus( bool &status )
     if( tel_status == LEP_TELEMETRY_ENABLED )
     {
         status = true;
-        }
+    }
     else
     {
         status = false;
@@ -851,7 +879,7 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
         if( LEP_SetAgcEnableState(&mCciConnPort, LEP_AGC_ENABLE ) != LEP_OK ) // RGB888 requires AGC enabled
         {
             cerr << "Cannot enable AGC" << endl;
-        
+
             mBuffMutex.unlock();
             return LEP_ERROR;
         }
@@ -861,7 +889,7 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
         if( LEP_SetVidPcolorLut(&mCciConnPort,LEP_VID_FUSION_LUT) != LEP_OK ) // Default RGB LUT
         {
             cerr << "Cannot set LUT" << endl;
-        
+
             mBuffMutex.unlock();
             return LEP_ERROR;
         }
@@ -961,13 +989,16 @@ LEP_RESULT Lepton3::getSpotInfo( float& valueK, float& minK, float& maxK, uint16
 
 void Lepton3::raw2data16()
 {
+    // NOTE: DO NOT LOCK THE MUTEX!!!
+    // raw2data16 is always called inside a "mutex block"
+
     int wordCount = mSpiRawFrameBufSize/2;
     int wordPackSize = mPacketSize/2;
 
     mMin = 0x3fff;
     mMax = 0;
     
-    uint16_t* frameBuffer = (uint16_t*)mSpiRawFrameBuf;
+    uint16_t* frameBuffer = (uint16_t*)(mSpiRawFrameBuf[mBuffIdx]);
 
     int pixIdx = 0;
     for(int i=0; i<wordCount; i++)
@@ -980,9 +1011,9 @@ void Lepton3::raw2data16()
 
         //uint16_t value = (((uint16_t*)mSpiRawFrameBuf)[i]);
         
-        int temp = mSpiRawFrameBuf[i*2];
-        mSpiRawFrameBuf[i*2] = mSpiRawFrameBuf[i*2+1];
-        mSpiRawFrameBuf[i*2+1] = temp;
+        int temp = mSpiRawFrameBuf[mBuffIdx][i*2];
+        mSpiRawFrameBuf[mBuffIdx][i*2] = mSpiRawFrameBuf[mBuffIdx][i*2+1];
+        mSpiRawFrameBuf[mBuffIdx][i*2+1] = temp;
 
         uint16_t value = frameBuffer[i];
         
@@ -999,7 +1030,7 @@ void Lepton3::raw2data16()
                 mMin = value;
         }
 
-        mDataFrameBuf16[pixIdx] = value;
+        mDataFrameBuf16[mBuffIdx][pixIdx] = value;
         pixIdx++;
     }
     
@@ -1010,14 +1041,20 @@ void Lepton3::raw2data16()
     }
     
     // cout << pixIdx << endl;
+
+    mDataValid[mBuffIdx] = true;
+    mBuffIdx = (mBuffIdx+1)%MULTI_BUFF_SIZE;
 }
 
 void Lepton3::raw2RGB()
 {
+    // NOTE: DO NOT LOCK THE MUTEX!!!
+    // raw2RGB is always called inside a "mutex block"
+
     int byteCount = mSpiRawFrameBufSize;
     int pxPackSize = mPacketSize;
 
-    uint8_t* frameBuffer = mSpiRawFrameBuf;
+    uint8_t* frameBuffer = mSpiRawFrameBuf[mBuffIdx];
 
     int pixIdx = 0;
     int headCount = 0;
@@ -1031,23 +1068,27 @@ void Lepton3::raw2RGB()
             continue;
         }
 
-        mDataFrameBufRGB[pixIdx] = frameBuffer[i];
+        mDataFrameBufRGB[mBuffIdx][pixIdx] = frameBuffer[i];
         //cout << "byteCount: " << byteCount << " - pxPackSize: " << pxPackSize;
-        //cout << " - Idx: " << pixIdx << " - i: " << i << endl;  
+        //cout << " - Idx: " << pixIdx << " - i: " << i << endl;
         pixIdx++;
     }
 
+    mDataValid[mBuffIdx] = true;
+    mBuffIdx = (mBuffIdx+1)%MULTI_BUFF_SIZE;
 }
 
 const uint16_t* Lepton3::getLastFrame16( uint8_t& width, uint8_t& height, uint16_t* min/*=NULL*/, uint16_t* max/*=NULL*/ )
 {
+    int idx = mBuffIdx==0?(MULTI_BUFF_SIZE-1):(mBuffIdx-1);
+
     if( mRgbEnabled )
         return NULL;
 
-    if( !mDataValid )
+    if( !mDataValid[idx] )
         return NULL;
 
-    mDataValid = false;
+    mDataValid[idx] = false;
     
     width = FRAME_W;
     height = FRAME_H;
@@ -1061,22 +1102,24 @@ const uint16_t* Lepton3::getLastFrame16( uint8_t& width, uint8_t& height, uint16
     {
         *max = mMax;
     }
-    
-    return mDataFrameBuf16;
+
+    return mDataFrameBuf16[idx];
 }
 
 const uint8_t* Lepton3::getLastFrameRGB( uint8_t& width, uint8_t& height )
 {
+    int idx = mBuffIdx==0?(MULTI_BUFF_SIZE-1):(mBuffIdx-1);
+
     if( !mRgbEnabled )
         return NULL;
 
-    if( !mDataValid )
+    if( !mDataValid[idx] )
         return NULL;
 
-    mDataValid = false;
+    mDataValid[idx] = false;
 
     width = FRAME_W;
     height = FRAME_H;
 
-    return mDataFrameBufRGB;
+    return mDataFrameBufRGB[idx];
 }
