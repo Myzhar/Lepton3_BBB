@@ -69,7 +69,8 @@ public:
     LEP_RESULT getAgcStatus(bool &status);         //!< Verify if AGC is enabled or not
     LEP_RESULT enableAgc( bool enable );           //!< Enable/Disable AGC
     
-    LEP_RESULT getGainMode( LEP_SYS_GAIN_MODE_E& mode); //!< Get Lepton3 gain mode                
+    LEP_RESULT getGainMode( LEP_SYS_GAIN_MODE_E& mode); //!< Get Lepton3 gain mode
+    LEP_RESULT setGainMode( LEP_SYS_GAIN_MODE_E newMode); //!< Set Lepton3 gain mode
 
     // >>>>> Not yet available on Lepton3
     //LEP_RESULT getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h ); //!< Get Spotmeter region

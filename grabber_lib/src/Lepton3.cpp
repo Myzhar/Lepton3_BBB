@@ -826,6 +826,34 @@ LEP_RESULT Lepton3::getGainMode( LEP_SYS_GAIN_MODE_E& mode)
     return LEP_OK;
 }
 
+LEP_RESULT Lepton3::setGainMode( LEP_SYS_GAIN_MODE_E newMode )
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+
+    LEP_SYS_GAIN_MODE_E curr_mode;
+
+    if( LEP_GetSysGainMode( &mCciConnPort, (LEP_SYS_GAIN_MODE_E_PTR)&curr_mode ) != LEP_OK )
+    {
+        cerr << "Cannot get Gain Mode" << endl;
+        return LEP_ERROR;
+    }
+
+    if( curr_mode != newMode )
+    {
+        if( LEP_SetSysGainMode(&mCciConnPort, newMode ) != LEP_OK )
+        {
+            cerr << "Cannot set Gain Mode" << endl;
+            return LEP_ERROR;
+        }
+    }
+
+    return LEP_OK;
+}
+
 LEP_RESULT Lepton3::getVideoOutputFormat( LEP_OEM_VIDEO_OUTPUT_FORMAT_E& format  )
 {
     if(!mCciConnected)

@@ -13,6 +13,9 @@ set (CMAKE_CXX_STANDARD 11)
 # Library source code
 add_subdirectory (grabber_lib)
 
+# bbb_life_tracker
+add_subdirectory (bbb_life_tracker)
+
 # OpenCV demo
 add_subdirectory (opencv_demo)
 
