@@ -36,14 +36,15 @@ void print_info()
     cout << "Usage: " << endl << "\t bbb_life_tracker <trk_mode> <debug_ip_address> <debug_port> <multicast_interface> [debug_level]" << endl << endl;
     cout << "\ttrk_mode:" << endl;
     cout << "\t\t --avoid [-A] / --follow [-F] -> avoid/follow elements with a temperature compatible to life" << endl;
-    cout << "\tdebug_ip_address -> the IP address of the destination of the video stream" << endl;
-    cout << "\tdebug_port -> the port  of the destination of the video stream" << endl;
+    cout << "\tstream_ip_address -> the IP address of the destination of the video stream" << endl;
+    cout << "\traw_port -> the port  of the destination of the raw video stream" << endl;
+    cout << "\tres_port -> the port  of the destination of the video stream with tracking result" << endl;
     cout << "\tmulticast_interface -> the network interface to multicast the video stream [use \"\" for unicast]" << endl;
     cout << "\tdebug_level [optional]:" << endl;
     cout << "\t\t 0 [default] (no debug) - 1 (info debug) - 2 (full debug)" << endl << endl;
 }
 
-int main( int   argc, char *argv[] )
+int main( int argc, char *argv[] )
 {
     gst_init( &argc, &argv );
 
@@ -63,10 +64,11 @@ int main( int   argc, char *argv[] )
 
     std::string track_mode;
     std::string ip_addr;
-    uint32_t ip_port;
+    uint32_t raw_ip_port;
+    uint32_t res_ip_port;
     std::string iface;
 
-    if( argc != 5 || argc != 6  )
+    if( argc != 6 || argc != 7  )
     {
         print_info();
 
@@ -76,17 +78,33 @@ int main( int   argc, char *argv[] )
     {
         track_mode = argv[1];
         ip_addr = argv[2];
-        string port = argv[3];
+
+        string raw_port = argv[3];
 
         try
         {
-            ip_port = std::stoul(port);
+            raw_ip_port = std::stoul(raw_port);
         }
         catch( const std::invalid_argument& ia )
         {
             print_info();
 
-            cerr << endl <<  "Invalid argument for 'debug_port': " << ia.what() << endl;
+            cerr << endl <<  "Invalid argument for 'raw_port': " << ia.what() << endl;
+
+            return EXIT_FAILURE;
+        }
+
+        string res_port = argv[3];
+
+        try
+        {
+            res_ip_port = std::stoul(res_port);
+        }
+        catch( const std::invalid_argument& ia )
+        {
+            print_info();
+
+            cerr << endl <<  "Invalid argument for 'res_port': " << ia.what() << endl;
 
             return EXIT_FAILURE;
         }
@@ -116,18 +134,45 @@ int main( int   argc, char *argv[] )
         }
     }
 
-    // >>>>> Create GStreamer encoder
-    videoEncoder* gstEncoder = NULL;
+    // >>>>> Create GStreamer encoder for raw stream
+    videoEncoder* gstEncoderRaw = NULL;
 
-    gstEncoder = videoEncoder::Create( 160, 120,
+    gstEncoderRaw = videoEncoder::Create( 160, 120,
                                        iface,
                                        ip_addr,
-                                       ip_port,
+                                       raw_ip_port,
                                        1024,
                                        "gst_encoder");
 
-    gstEncoder->Open();
-    // <<<<< Create GStreamer encoder
+    if( !gstEncoderRaw)
+    {
+        cerr << "Cannot create Encoder for Raw Video Stream" << endl;
+
+        return EXIT_FAILURE;
+    }
+
+    gstEncoderRaw->Open();
+    // <<<<< Create GStreamer encoder for raw stream
+
+    // >>>>> Create GStreamer encoder for res stream
+    videoEncoder* gstEncoderRes = NULL;
+
+    gstEncoderRes = videoEncoder::Create( 160, 120,
+                                       iface,
+                                       ip_addr,
+                                       res_ip_port,
+                                       1024,
+                                       "gst_encoder");
+
+    if( !gstEncoderRes)
+    {
+        cerr << "Cannot create Encoder for Result Video Stream" << endl;
+
+        return EXIT_FAILURE;
+    }
+
+    gstEncoderRes->Open();
+    // <<<<< Create GStreamer encoder for res stream */
 
     Lepton3 lepton3( "/dev/spidev1.0", 1, deb_lvl );
     
@@ -193,8 +238,6 @@ int main( int   argc, char *argv[] )
     }
     else
     {
-        lepton3.stop();
-
         print_info();
 
         cerr << endl <<  "Invalid argument for 'trk_mode'" << endl;
@@ -229,42 +272,48 @@ int main( int   argc, char *argv[] )
             double freq = (1000.*1000.)/period_usec;
 
             cv::Mat frame16( h, w, CV_16UC1 );
-            cv::Mat frameRGB( h, w, CV_8UC3 );
+
+            cv::Mat frameRes;
 
             memcpy( frame16.data, data16, w*h*sizeof(uint16_t) );
 
             // >>>>> Tracking
-            if( !tracker.setNewFrame( frame16 ) )
+            if( tracker.setNewFrame( frame16, min, max ) != FlirTracker::TRK_RES_ERROR )
             {
                 if( deb_lvl>=Lepton3::DBG_INFO  )
                 {
                     cout << "*** Error performing tracking step on frame #" << frameIdx << endl;
                 }
+
+                frameRes = tracker.getResFrameRGB();
             }
             // <<<<< Tracking
 
-            // >>>>> Rescaling/Normalization to 8bit to visualize data
-            double diff = static_cast<double>(max - min); // Image range
-            double scale = 255./diff; // Scale factor
-
-            frame16 -= min; // Bias
-            frame16 *= scale; // Rescale data
-
-            cv::Mat frame8;
-            frame16.convertTo( frame8, CV_8UC1 );
-            // <<<<< Rescaling/Normalization to 8bit to visualize data
-
-            cv::cvtColor( frame8,frameRGB, CV_GRAY2RGB );
-
-            if(gstEncoder)
+            if(gstEncoderRaw)
             {
+                cv::Mat frameRGB;
+
+                frameRGB = FlirTracker::normalizeFrame( frame16, min, max );
+
                 cv::Mat frameYUV( h+h/2, w, CV_8UC1 );
                 cv::cvtColor( frameRGB, frameYUV, cv::COLOR_RGB2YUV_I420 );
-                gstEncoder->PushFrame( (uint8_t*)frameYUV.data );
+                gstEncoderRaw->PushFrame( (uint8_t*)frameYUV.data );
                 
                 if( deb_lvl>=Lepton3::DBG_FULL  )
                 {
-                    cout << "Frame pushed" << endl;
+                    cout << "Frame Raw pushed" << endl;
+                }
+            }
+
+            if(gstEncoderRes && !frameRes.empty() )
+            {
+                cv::Mat frameYUV( h+h/2, w, CV_8UC1 );
+                cv::cvtColor( frameRes, frameYUV, cv::COLOR_RGB2YUV_I420 );
+                gstEncoderRes->PushFrame( (uint8_t*)frameYUV.data );
+
+                if( deb_lvl>=Lepton3::DBG_FULL  )
+                {
+                    cout << "Frame Res pushed" << endl;
                 }
             }
 
@@ -281,9 +330,14 @@ int main( int   argc, char *argv[] )
 
     lepton3.stop();
 
-    if(gstEncoder)
+    if(gstEncoderRaw)
     {
-        delete gstEncoder;
+        delete gstEncoderRaw;
+    }
+
+    if(gstEncoderRes)
+    {
+        delete gstEncoderRes;
     }
 
 

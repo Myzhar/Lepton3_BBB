@@ -15,9 +15,9 @@ set(LIB_GSTREAMER ${GSTREAMER_LIBRARIES} ${GSTREAMER_APP_LIBRARIES}
 
 #########################################################
 # SOURCES
-file(GLOB_RECURSE DEMO_SRC *.c *.cpp)
-# HEADERS
-file(GLOB_RECURSE DEMO_HDR *.h *.hpp)
+set(TRK_SRC ${CMAKE_CURRENT_SOURCE_DIR}/flir_tracker/src/flir_tracker.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/flir_tracker/src/Palettes.cpp )
+set(ENC_SRC ${CMAKE_CURRENT_SOURCE_DIR}/videoEncoder/src/videoEncoder.cpp )
 #########################################################
 
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/videoEncoder/include
@@ -27,11 +27,19 @@ include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/videoEncoder/include
                      ${CMAKE_CURRENT_SOURCE_DIR}/flir_tracker/include
 )
 
-
-add_executable (bbb_life_tracker ${DEMO_SRC} )
-target_link_libraries (bbb_life_tracker LINK_PUBLIC 
-                       lepton3_grabber 
+add_executable (test_tracker test_tracker.cpp ${TRK_SRC})
+target_link_libraries (test_tracker LINK_PUBLIC
                        ${LIB_GSTREAMER}
-                       opencv_core 
-                       opencv_highgui 
+                       opencv_core
+                       opencv_highgui
                        opencv_imgproc)
+
+add_executable (bbb_life_tracker bbb_life_tracker.cpp ${ENC_SRC} ${TRK_SRC} )
+target_link_libraries (bbb_life_tracker LINK_PUBLIC
+                       lepton3_grabber
+                      ${LIB_GSTREAMER}
+                       opencv_core
+                       opencv_highgui
+                       opencv_imgproc)
+
+
