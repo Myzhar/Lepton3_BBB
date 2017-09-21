@@ -14,7 +14,7 @@ FlirTracker::FlirTracker(TrackMode trkMode, uint16_t minThresh, uint16_t maxThre
     , mMinThresh(minThresh)
     , mMaxThresh(maxThresh)
 {
-
+    mPaletteIdx = 0;
 }
 
 FlirTracker::~FlirTracker()
@@ -39,60 +39,74 @@ FlirTracker::TrackRes FlirTracker::setNewFrame( cv::Mat frame16, uint16_t min, u
     mFrameMin = min;
     mFrameMax = max;
 
-    mFrame16 = frame16;
+    frame16.copyTo(mFrame16);
 
     return doTrackStep();
 }
 
+void FlirTracker::setNewThresh(uint16_t minThresh, uint16_t maxThresh)
+{
+    mMinThresh = minThresh;
+    mMaxThresh = maxThresh;
+    
+    cout << "New MIN thresh: " << (int)mMinThresh << " - New MAX thresh: " << mMaxThresh << "\r" << endl;
+}
+
 FlirTracker::TrackRes FlirTracker::doTrackStep()
 {
-    cv::inRange( mFrame16, cv::Scalar(mMinThresh), cv::Scalar(mMaxThresh), mResMask );
+    cv::inRange( mFrame16, mMinThresh, mMaxThresh, mResMask );
+    
+    //cout << mMinThresh << "," << mMaxThresh << "\r" << endl;
 
     //cv::imshow( "Range mask", mResMask );
 
-    mFrame16.copyTo(mRes16,mResMask); // Mask
+    //mFrame16.copyTo(mRes16,mResMask); // Mask
 
     return TRK_RES_NONE;
 }
 
+void FlirTracker::nextPalette()
+{ 
+    mPaletteIdx = (mPaletteIdx+1)%PALETTES_COUNT;
+
+    cout << "New palette: " << (int)mPaletteIdx << "\r" << endl;
+}
 
 cv::Mat FlirTracker::getResFrameRGB()
 {
     /*if( !mResRGB.empty() )
         return cv::Mat();*/
 
-    uint16_t max_val = static_cast<uint16_t>(pow(2,14)-1);
-    cv::Mat temp8 = normalizeFrame( mFrame16, 0, max_val );
+    cv::Mat temp8 = normalizeFrame( mFrame16, mFrameMin, mFrameMax );
 
     cv::cvtColor( temp8, mResRGB, CV_GRAY2BGR );
 
-    mResRGB.create(temp8.size(), CV_8UC3 );
+    //mResRGB.create(temp8.size(), CV_8UC3 );
     //cv::imshow( "Original_int", mResRGB );
+    
+    const uint8_t* lut = palettes[mPaletteIdx];
 
     for( int r=0; r<mResRGB.rows; r++ )
     {
         for( int c=0; c<mResRGB.cols; c++ )
         {
-            const uint8_t* lut = colormap_rainbow;
-
             int maskVal = mResMask.at<uint8_t>(r,c);
             if( maskVal!=0 )
             {
                 uint16_t val = temp8.at<uint8_t>(r,c);
-                uint8_t r_ = lut[val+2];
-                uint8_t g_ = lut[val+1];
-                uint8_t b_ = lut[val+0];
+                
+                uint8_t r_ = lut[val*3+2];
+                uint8_t g_ = lut[val*3+1];
+                uint8_t b_ = lut[val*3+0];
                 int idx = 3*(r*160+c);
                 mResRGB.data[idx+2] = r_;
                 mResRGB.data[idx+1] = g_;
                 mResRGB.data[idx+0] = b_;
             }
         }
-        cout << endl;
-    }
+    }//*/
 
-
-
+    //cv::cvtColor( mResMask, mResRGB, CV_GRAY2BGR );
     return mResRGB;
 }
 

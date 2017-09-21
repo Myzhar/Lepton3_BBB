@@ -4,6 +4,9 @@
 #include <string>
 #include <chrono>
 #include <thread>
+#include <stdio.h>
+#include <ncurses.h>
+
 
 #include "Lepton3.hpp"
 
@@ -20,29 +23,11 @@
 
 using namespace std;
 
-static bool close = false;
+static bool quit = false;
 
-void close_handler(int s)
-{
-    if(s==2)
-    {
-        cout << endl << "Ctrl+C pressed..." << endl;
-        close = true;
-    }
-}
+void close_handler(int s);
 
-void print_info()
-{
-    cout << "Usage: " << endl << "\t bbb_life_tracker <trk_mode> <debug_ip_address> <debug_port> <multicast_interface> [debug_level]" << endl << endl;
-    cout << "\ttrk_mode:" << endl;
-    cout << "\t\t --avoid [-A] / --follow [-F] -> avoid/follow elements with a temperature compatible to life" << endl;
-    cout << "\tstream_ip_address -> the IP address of the destination of the video stream" << endl;
-    cout << "\traw_port -> the port  of the destination of the raw video stream" << endl;
-    cout << "\tres_port -> the port  of the destination of the video stream with tracking result" << endl;
-    cout << "\tmulticast_interface -> the network interface to multicast the video stream [use \"\" for unicast]" << endl;
-    cout << "\tdebug_level [optional]:" << endl;
-    cout << "\t\t 0 [default] (no debug) - 1 (info debug) - 2 (full debug)" << endl << endl;
-}
+void print_info();
 
 int main( int argc, char *argv[] )
 {
@@ -59,7 +44,14 @@ int main( int argc, char *argv[] )
 
     sigaction(SIGINT, &sigIntHandler, NULL);
     // <<<<< Enable Ctrl+C
-
+    
+    // >>>>> Get char without enter
+    initscr();
+    timeout(0);
+    cbreak(); /* as per recommend Thomas Dickey */
+    noecho(); /* as per recommend Thomas Dickey */    
+    // <<<<< Get char without enter
+                
     Lepton3::DebugLvl deb_lvl = Lepton3::DBG_NONE;
 
     std::string track_mode;
@@ -68,7 +60,7 @@ int main( int argc, char *argv[] )
     uint32_t res_ip_port;
     std::string iface;
 
-    if( argc != 6 || argc != 7  )
+    if( argc != 6 && argc != 7  )
     {
         print_info();
 
@@ -94,7 +86,7 @@ int main( int argc, char *argv[] )
             return EXIT_FAILURE;
         }
 
-        string res_port = argv[3];
+        string res_port = argv[4];
 
         try
         {
@@ -109,12 +101,11 @@ int main( int argc, char *argv[] )
             return EXIT_FAILURE;
         }
 
+        iface = argv[5];
 
-        iface = argv[4];
-
-        if( argc==6 )
+        if( argc==7 )
         {
-            int dbg = atoi(argv[5]);
+            int dbg = atoi(argv[6]);
 
             switch( dbg )
             {
@@ -176,20 +167,16 @@ int main( int argc, char *argv[] )
 
     Lepton3 lepton3( "/dev/spidev1.0", 1, deb_lvl );
     
-    if( lepton3.enableRadiometry( true ) < 0)
-    {
-        cerr << "Failed to enable radiometry!" << endl;
-        return EXIT_FAILURE;
-    }
-
-    if( lepton3.enableAgc( FALSE ) < 0)
+    if( lepton3.enableAgc( false ) < 0)
     {
         cerr << "Failed to disable AGC" << endl;
+        return EXIT_FAILURE;
     }
 
     if( lepton3.enableRgbOutput( false ) < 0 )
     {
         cerr << "Failed to disable RGB output" << endl;
+        return EXIT_FAILURE;
     }
 
     // >>>>> Life detection thresholds
@@ -201,12 +188,18 @@ int main( int argc, char *argv[] )
         cout << " * Gain mode: " << str << endl;
     }
 
-    if( gainMode==LEP_SYS_GAIN_MODE_AUTO ) // we want a fixed gain mode!
+    /*if( gainMode==LEP_SYS_GAIN_MODE_AUTO ) // we want a fixed gain mode!
     {
         if( lepton3.setGainMode( LEP_SYS_GAIN_MODE_HIGH ) < 0 )
         {
             cerr << "Failed to set Gain mode" << endl;
         }
+    }*/
+    
+    if( lepton3.setGainMode( LEP_SYS_GAIN_MODE_HIGH ) < 0 )
+    {
+        cerr << "Failed to set Gain mode" << endl;
+        return EXIT_FAILURE;
     }
 
     uint16_t min_thresh;
@@ -214,13 +207,19 @@ int main( int argc, char *argv[] )
 
     if( gainMode == LEP_SYS_GAIN_MODE_HIGH )
     {
-        min_thresh = 300; // TODO evaluate these thresholds
-        max_thresh = 600; // TODO evaluate these thresholds
+        min_thresh = 3400; // TODO evaluate these thresholds
+        max_thresh = 4000; // TODO evaluate these thresholds
     }
     else
     {
-        min_thresh = 300; // TODO evaluate these thresholds
-        max_thresh = 600; // TODO evaluate these thresholds
+        min_thresh = 3400; // TODO evaluate these thresholds
+        max_thresh = 4000; // TODO evaluate these thresholds
+    }
+    
+    if( lepton3.enableRadiometry( true ) < 0)
+    {
+        cerr << "Failed to enable radiometry!" << endl;
+        return EXIT_FAILURE;
     }
     // <<<<< Life detection thresholds
 
@@ -256,7 +255,7 @@ int main( int argc, char *argv[] )
 
     stpWtc.tic();
 
-    while(!close)
+    while(!quit)
     {
         uint16_t min;
         uint16_t max;
@@ -294,6 +293,7 @@ int main( int argc, char *argv[] )
                 cv::Mat frameRGB;
 
                 frameRGB = FlirTracker::normalizeFrame( frame16, min, max );
+                cv::cvtColor(frameRGB,frameRGB,CV_GRAY2BGR);
 
                 cv::Mat frameYUV( h+h/2, w, CV_8UC1 );
                 cv::cvtColor( frameRGB, frameYUV, cv::COLOR_RGB2YUV_I420 );
@@ -324,7 +324,79 @@ int main( int argc, char *argv[] )
                 cout << "> Frame period: " << period_usec <<  " usec - FPS: " << freq << endl;
             }
         }
-
+        
+        // >>>>> Keyboard interaction
+                
+        int c = getch();           
+        
+        switch(c)
+        {
+            case 'P':
+            case 'p':
+                tracker.nextPalette();
+            break;
+            
+            case 'A':
+            case 'a':
+                printw("\r");
+                min_thresh += 10;
+                tracker.setNewThresh(min_thresh, max_thresh);
+            break;
+            
+            case 'Z':
+            case 'z':
+                printw("\r");
+                min_thresh -= 10;
+                tracker.setNewThresh(min_thresh, max_thresh);
+            break;
+            
+            case 'S':
+            case 's':
+                printw("\r");
+                min_thresh += 1;
+                tracker.setNewThresh(min_thresh, max_thresh);
+            break;
+            
+            case 'X':
+            case 'x':
+                printw("\r");
+                min_thresh -= 1;
+                tracker.setNewThresh(min_thresh, max_thresh);
+            break;
+            
+            case 'D':
+            case 'd':
+                printw("\r");
+                max_thresh += 10;
+                tracker.setNewThresh(min_thresh, max_thresh);
+            break;
+            
+            case 'C':
+            case 'c':
+                printw("\r");
+                max_thresh -= 10;
+                tracker.setNewThresh(min_thresh, max_thresh);
+            break;
+            
+            case 'F':
+            case 'f':
+                printw("\r");
+                max_thresh += 1;
+                tracker.setNewThresh(min_thresh, max_thresh);
+            break;
+            
+            case 'V':
+            case 'v':
+                printw("\r");
+                max_thresh -= 1;
+                tracker.setNewThresh(min_thresh, max_thresh);
+            break;        
+        }        
+           
+        
+        // <<<<< Keyboard interaction        
+        
+        //refresh();
         std::this_thread::sleep_for(std::chrono::milliseconds(110));
     }
 
@@ -339,7 +411,32 @@ int main( int argc, char *argv[] )
     {
         delete gstEncoderRes;
     }
-
+    
+    // ncurses close
+    endwin();
+    
 
     return EXIT_SUCCESS;
+}
+
+void close_handler(int s)
+{
+    if(s==2)
+    {
+        cout << endl << "Ctrl+C pressed..." << endl;
+        quit = true;
+    }
+}
+
+void print_info()
+{
+    cout << "Usage: " << endl << "   bbb_life_tracker <trk_mode> <debug_ip_address> <raw_port> <res_port>  <multicast_interface> [debug_level]" << endl << endl;
+    cout << "   trk_mode:" << endl;
+    cout << "       --avoid [-A] / --follow [-F] -> avoid/follow elements with a temperature compatible to life" << endl;
+    cout << "   stream_ip_address -> the IP address of the destination of the video stream" << endl;
+    cout << "   raw_port -> the port  of the destination of the raw video stream" << endl;
+    cout << "   res_port -> the port  of the destination of the video stream with tracking result" << endl;
+    cout << "   multicast_interface -> the network interface to multicast the video stream [use '' for unicast]" << endl;
+    cout << "   debug_level [optional]:" << endl;
+    cout << "       0 [default] (no debug) - 1 (info debug) - 2 (full debug)" << endl << endl;
 }
