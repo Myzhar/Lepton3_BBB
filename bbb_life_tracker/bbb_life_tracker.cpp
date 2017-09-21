@@ -133,7 +133,7 @@ int main( int argc, char *argv[] )
                                        ip_addr,
                                        raw_ip_port,
                                        1024,
-                                       "gst_encoder");
+                                       "gst_raw_therm");
 
     if( !gstEncoderRaw)
     {
@@ -153,7 +153,7 @@ int main( int argc, char *argv[] )
                                        ip_addr,
                                        res_ip_port,
                                        1024,
-                                       "gst_encoder");
+                                       "gst_res_therm");
 
     if( !gstEncoderRes)
     {
@@ -180,41 +180,14 @@ int main( int argc, char *argv[] )
     }
 
     // >>>>> Life detection thresholds
-    // thresholds settings according to Lepton3 gain mode
-    LEP_SYS_GAIN_MODE_E gainMode;
-    if( lepton3.getGainMode( gainMode ) == LEP_OK )
-    {
-        string str = (gainMode==LEP_SYS_GAIN_MODE_HIGH)?string("High"):((gainMode==LEP_SYS_GAIN_MODE_LOW)?string("Low"):string("Auto"));
-        cout << " * Gain mode: " << str << endl;
-    }
-
-    /*if( gainMode==LEP_SYS_GAIN_MODE_AUTO ) // we want a fixed gain mode!
-    {
-        if( lepton3.setGainMode( LEP_SYS_GAIN_MODE_HIGH ) < 0 )
-        {
-            cerr << "Failed to set Gain mode" << endl;
-        }
-    }*/
-    
     if( lepton3.setGainMode( LEP_SYS_GAIN_MODE_HIGH ) < 0 )
     {
         cerr << "Failed to set Gain mode" << endl;
         return EXIT_FAILURE;
     }
 
-    uint16_t min_thresh;
-    uint16_t max_thresh;
-
-    if( gainMode == LEP_SYS_GAIN_MODE_HIGH )
-    {
-        min_thresh = 3400; // TODO evaluate these thresholds
-        max_thresh = 4000; // TODO evaluate these thresholds
-    }
-    else
-    {
-        min_thresh = 3400; // TODO evaluate these thresholds
-        max_thresh = 4000; // TODO evaluate these thresholds
-    }
+    uint16_t min_thresh = 3400; // [0°C-150°C] 3400*0.009 = 30.6°C - [0°C-140°C] 3400*0.0085=28.9°C
+    uint16_t max_thresh = 4000; // [0°C-150°C] 4000*0.009 = 36.0°C - [0°C-140°C] 4000*0.0085=34.0°C
     
     if( lepton3.enableRadiometry( true ) < 0)
     {
