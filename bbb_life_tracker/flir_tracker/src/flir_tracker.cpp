@@ -3,7 +3,6 @@
 
 #include <iostream>
 
-
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
@@ -15,6 +14,8 @@ FlirTracker::FlirTracker(TrackMode trkMode, uint16_t minThresh, uint16_t maxThre
     , mMaxThresh(maxThresh)
 {
     mPaletteIdx = 0;
+
+    createColorMaps();
 }
 
 FlirTracker::~FlirTracker()

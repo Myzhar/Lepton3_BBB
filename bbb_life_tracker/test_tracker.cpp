@@ -6,6 +6,7 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include <flir_tracker.h>
+#include "Palettes.h"
 
 #define ROWS 120
 #define COLS 160
@@ -14,6 +15,8 @@ using namespace std;
 
 int main( int argc, char* argv[] )
 {
+    cv::Mat resRGB;
+
     std::srand(std::time(0)); // use current time as seed for random generator
 
     cv::Mat test16( ROWS,COLS, CV_16UC1 );
@@ -45,8 +48,6 @@ int main( int argc, char* argv[] )
         }
     }
 
-    cv::Mat resRGB;
-
     FlirTracker tracker( FlirTracker::TRK_AVOID, minTh, maxTh );
 
     if( tracker.setNewFrame( test16, 0, max_val ) != FlirTracker::TRK_RES_ERROR )
@@ -55,6 +56,29 @@ int main( int argc, char* argv[] )
     }
 
     cv::Mat test8 = FlirTracker::normalizeFrame( test16, 0, max_val );
+
+    for( int i=0; i<PALETTES_COUNT; i++ )
+    {
+        const uint8_t* lut = palettes[i];
+
+        int scaleC = 100;
+        cv::Mat scale( 256,scaleC, CV_8UC3, cv::Scalar(0,0,0) );
+        for( int r=0; r<256; r++ )
+        {
+            for( int c=0; c<scaleC; c++ )
+            {
+                int idx = 3*((255-r)*scaleC+c);
+                scale.data[idx+2] = lut[r*3+2];
+                scale.data[idx+1] = lut[r*3+1];
+                scale.data[idx+0] = lut[r*3+0];
+            }
+        }
+        cv::string label = "#";
+        label += std::to_string( i );
+        cv::imshow( label , scale );
+    }
+
+
 
     cv::imshow( "Original", test8 );
     cv::imshow( "Result", resRGB );
