@@ -270,7 +270,6 @@ void createColorMaps()
         colormap_bry[i*3+0] = r8;
         colormap_bry[i*3+1] = g8;
         colormap_bry[i*3+2] = b8;
-        cout << (int)r8 << "," << (int)g8 << "," << (int)b8 << endl;
         // <<<<< BLU RED YELLOW
 
         // >>>>> BLU GREEN YELLOW RED
