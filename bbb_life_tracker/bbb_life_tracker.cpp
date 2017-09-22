@@ -44,13 +44,7 @@ int main( int argc, char *argv[] )
 
     sigaction(SIGINT, &sigIntHandler, NULL);
     // <<<<< Enable Ctrl+C
-    
-    // >>>>> Get char without enter
-    initscr();
-    timeout(0);
-    cbreak(); /* as per recommend Thomas Dickey */
-    noecho(); /* as per recommend Thomas Dickey */    
-    // <<<<< Get char without enter
+       
                 
     Lepton3::DebugLvl deb_lvl = Lepton3::DBG_NONE;
 
@@ -220,6 +214,18 @@ int main( int argc, char *argv[] )
     FlirTracker tracker( trkMode, min_thresh, max_thresh );
     // <<<<< Tracker
 
+    if( lepton3.doFFC() != LEP_OK )
+    {
+        return EXIT_FAILURE;
+    }
+    
+    // >>>>> Get char without enter
+    initscr();
+    timeout(0);
+    cbreak(); /* as per recommend Thomas Dickey */
+    noecho(); /* as per recommend Thomas Dickey */    
+    // <<<<< Get char without enter
+
     lepton3.start();
 
     uint64_t frameIdx=0;
@@ -304,11 +310,30 @@ int main( int argc, char *argv[] )
         
         switch(c)
         {
+            case 'Q':
+            case 'q':
+                quit=true;
+            break;
+        
             case 'P':
             case 'p':
                 tracker.nextPalette();
+            break;                     
+            
+            case 'G':
+            case 'g':
+                min_thresh += 100;
+                max_thresh += 100;
+                tracker.setNewThresh(min_thresh, max_thresh);
             break;
             
+            case 'B':
+            case 'b':
+                min_thresh -= 100;
+                max_thresh -= 100;
+                tracker.setNewThresh(min_thresh, max_thresh);
+            break;
+             
             case 'A':
             case 'a':
                 printw("\r");

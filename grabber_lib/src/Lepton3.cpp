@@ -941,6 +941,55 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
         setVoSPIData();
     }
     mBuffMutex.unlock();
+    
+    return LEP_OK;
+}
+
+LEP_RESULT Lepton3::doFFC()
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+    
+    cout << "Performin FFC Normalization ....." << endl;
+    
+    if( LEP_SetSysShutterPosition( &mCciConnPort, LEP_SYS_SHUTTER_POSITION_CLOSED )  != LEP_OK )
+    {
+            cerr << "Cannot close shutter" << endl;
+            
+            return LEP_ERROR;
+    }
+    
+    if( LEP_RunSysFFCNormalization( &mCciConnPort ) != LEP_OK )
+    {
+            cerr << "Cannot perform FFC normalization" << endl;
+            
+            return LEP_ERROR;
+    }
+    
+    LEP_SYS_STATUS_E ffc_status;
+    do
+    {   
+        if( LEP_GetSysFFCStatus( &mCciConnPort, &ffc_status ) != LEP_OK )
+        {
+            cerr << "Cannot get FFC normalization status" << endl;
+            
+            return LEP_ERROR;
+        }
+    } while( ffc_status==LEP_SYS_STATUS_BUSY );
+    
+    if( LEP_SetSysShutterPosition( &mCciConnPort, LEP_SYS_SHUTTER_POSITION_OPEN )  != LEP_OK )
+    {
+            cerr << "Cannot open shutter" << endl;
+            
+            return LEP_ERROR;
+    }
+    
+    cout << "..... FFC Normalization DONE" << endl;
+    
+    return LEP_OK;
 }
 
 

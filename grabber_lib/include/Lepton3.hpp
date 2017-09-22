@@ -91,7 +91,7 @@ public:
 
     bool isRgbEnable(){return mRgbEnabled;} //!< Verify if RGB video format is enabled
     
-    // >>>>> Not yet available on Lepton3
+    LEP_RESULT doFFC(); //!< Performs FFC Normalization
     
     // <<<<< Controls
 
