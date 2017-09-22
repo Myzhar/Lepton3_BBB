@@ -68,9 +68,9 @@ int main( int argc, char* argv[] )
             for( int c=0; c<scaleC; c++ )
             {
                 int idx = 3*((255-r)*scaleC+c);
-                scale.data[idx+2] = lut[r*3+2];
+                scale.data[idx+2] = lut[r*3+0];
                 scale.data[idx+1] = lut[r*3+1];
-                scale.data[idx+0] = lut[r*3+0];
+                scale.data[idx+0] = lut[r*3+2];
             }
         }
         cv::string label = "#";

@@ -96,9 +96,9 @@ cv::Mat FlirTracker::getResFrameRGB()
             {
                 uint16_t val = temp8.at<uint8_t>(r,c);
                 
-                uint8_t r_ = lut[val*3+2];
+                uint8_t r_ = lut[val*3+0];
                 uint8_t g_ = lut[val*3+1];
-                uint8_t b_ = lut[val*3+0];
+                uint8_t b_ = lut[val*3+2];
                 int idx = 3*(r*160+c);
                 mResRGB.data[idx+2] = r_;
                 mResRGB.data[idx+1] = g_;
