@@ -13,7 +13,7 @@ FlirTracker::FlirTracker(TrackMode trkMode, uint16_t minThresh, uint16_t maxThre
     , mMinThresh(minThresh)
     , mMaxThresh(maxThresh)
 {
-    mPaletteIdx = 0;
+    mPaletteIdx = 6;
 
     createColorMaps();
 }

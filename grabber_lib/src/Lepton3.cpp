@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "LEPTON_SDK.h"
 #include "LEPTON_SYS.h"
@@ -46,7 +47,7 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     mSpiMode = SPI_MODE_3; // CPOL=1 (Clock Idle high level),
     // CPHA=1 (SDO transmit/change edge idle to active)
     mSpiBits = 8;
-    mSpiSpeed = 32500000; // Max available SPI speed (according to Lepton3 datasheet)
+    mSpiSpeed = 40000000/*32500000*/; // Max available SPI speed (according to Lepton3 datasheet)
 
     mSpiTR.tx_buf = (unsigned long)NULL;
     mSpiTR.delay_usecs = 50;
@@ -75,7 +76,7 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
         cout << "Debug level: " << mDebugLvl << endl;
 
     mStop = false;
-
+    mResyncCount = 0;
 }
 
 Lepton3::~Lepton3()
@@ -446,6 +447,7 @@ void Lepton3::thread_func()
                 }
                 
                 notValidCount=0;
+		mResyncCount = 0;
 
                 if( segment==(mCurrSegm+1) )
                 {
@@ -495,7 +497,7 @@ void Lepton3::thread_func()
                 // Start a new frame
                 mCurrSegm = 0;
 
-                notValidCount++;
+                notValidCount++;		
             }
             
             if( mDebugLvl>=DBG_FULL )
@@ -522,12 +524,23 @@ void Lepton3::thread_func()
         // read 8 not valid segments (ID 0)
         // If the number of not valid segments is higher than 8 we need to resync
         // the host with the device
-        if( notValidCount>=10 )
+        if( notValidCount>=30 )
         {
-            resync();
+	    resync();
             
             notValidCount=0;
         }
+
+	if( mResyncCount >=30 ) // Camera locked!
+	{
+            if( saveParams() == LEP_OK ) // Write current settings to OTP
+            {
+	       // Force a camera reboot
+               rebootCamera();
+
+               mResyncCount=0;
+	    }
+	}
 
         mBuffMutex.unlock();
 
@@ -549,22 +562,28 @@ void Lepton3::thread_func()
 
 void Lepton3::resync()
 {
-    if( mDebugLvl>=DBG_INFO )
+    mResyncCount++;
+
+    //if( mDebugLvl>=DBG_INFO )
     {
-        cout << endl << "!!!!!!!!!!!!!!!!!!!! RESYNC !!!!!!!!!!!!!!!!!!!!" << endl;
+        cout << endl << "*** Forcing RESYNC *** [" << mResyncCount << "]\r" << endl;
     }
 
     // >>>>> Resync
     uint8_t dummyBuf[5];
+    memset(dummyBuf, 0, 5 );
     mSpiTR.rx_buf = (unsigned long)(dummyBuf); // First Packet has been read above
     mSpiTR.len = 5;
     mSpiTR.cs_change = 1; // Force deselect after "ioctl"
 
     ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
     
-    // Keeps /CS High for 185 msec according to datasheet
-    std::this_thread::sleep_for(std::chrono::microseconds(185000));
+    // Keeps /CS High for >=185 msec according to datasheet
+    std::this_thread::sleep_for(std::chrono::microseconds(190000));
     // <<<<< Resync
+
+    mSpiTR.cs_change = 0; // Keep select after "ioctl"
+    ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
 }
 
 bool Lepton3::CciConnect()
@@ -953,12 +972,15 @@ LEP_RESULT Lepton3::doFFC()
             return LEP_ERROR;
     }
     
-    cout << "Performin FFC Normalization ....." << endl;
+    mBuffMutex.lock();
+    
+    cout << "Performing FFC Normalization ....." << endl;
     
     if( LEP_SetSysShutterPosition( &mCciConnPort, LEP_SYS_SHUTTER_POSITION_CLOSED )  != LEP_OK )
     {
             cerr << "Cannot close shutter" << endl;
             
+            mBuffMutex.unlock();
             return LEP_ERROR;
     }
     
@@ -966,6 +988,7 @@ LEP_RESULT Lepton3::doFFC()
     {
             cerr << "Cannot perform FFC normalization" << endl;
             
+            mBuffMutex.unlock();
             return LEP_ERROR;
     }
     
@@ -976,6 +999,7 @@ LEP_RESULT Lepton3::doFFC()
         {
             cerr << "Cannot get FFC normalization status" << endl;
             
+            mBuffMutex.unlock();
             return LEP_ERROR;
         }
     } while( ffc_status==LEP_SYS_STATUS_BUSY );
@@ -984,12 +1008,53 @@ LEP_RESULT Lepton3::doFFC()
     {
             cerr << "Cannot open shutter" << endl;
             
+            mBuffMutex.unlock();
             return LEP_ERROR;
     }
     
     cout << "..... FFC Normalization DONE" << endl;
     
+    mBuffMutex.unlock();
     return LEP_OK;
+}
+
+LEP_RESULT Lepton3::rebootCamera()
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+    
+    cout << "Performing Reboot .....\r" << endl;
+
+    cout << "..... Camera Power Down .....\r" << endl;	
+    if( LEP_RunOemReboot( &mCciConnPort )  != LEP_OK )
+    {
+            cerr << "Cannot power down the camera" << endl;
+            
+            return LEP_ERROR;
+    }
+
+    cout << "..... Reboot Done \r" << endl;
+}
+
+LEP_RESULT Lepton3::saveParams()
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+    
+    if( LEP_RunOemUserDefaultsCopyToOtp( &mCciConnPort )  != LEP_OK )
+    {
+            cerr << "Cannot power down the camera" << endl;
+            
+            return LEP_ERROR;
+    }
+
+    cout << "Current Parameters saved to OTP\r" << endl;
 }
 
 

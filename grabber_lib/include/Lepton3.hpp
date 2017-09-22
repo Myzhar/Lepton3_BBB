@@ -91,8 +91,10 @@ public:
 
     bool isRgbEnable(){return mRgbEnabled;} //!< Verify if RGB video format is enabled
     
-    LEP_RESULT doFFC(); //!< Performs FFC Normalization
-    
+    LEP_RESULT doFFC(); //!< Performs FFC Normalization  
+    LEP_RESULT rebootCamera(); //!< Perform a camera Power Down and Power Up
+
+    LEP_RESULT saveParams(); //!< Save current parameters to OTP. They will be reloaded after reboot
     // <<<<< Controls
 
 protected:
@@ -159,6 +161,8 @@ private:
     uint16_t mMax;
 
     bool mRgbEnabled;
+
+    int mResyncCount; //!< Number of consecutive resync
 };
 
 

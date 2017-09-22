@@ -180,8 +180,10 @@ int main( int argc, char *argv[] )
         return EXIT_FAILURE;
     }
 
-    uint16_t min_thresh = 3400; // [0°C-150°C] 3400*0.009 = 30.6°C - [0°C-140°C] 3400*0.0085=28.9°C
-    uint16_t max_thresh = 4000; // [0°C-150°C] 4000*0.009 = 36.0°C - [0°C-140°C] 4000*0.0085=34.0°C
+    // Hypothesis: sensor is linear.
+    // If the range of the sensor is 0°-150° in High Gain mode
+    uint16_t min_thresh = 3334; // [0°C-150°C] 3334*0.009 = 30.0°C 
+    uint16_t max_thresh = 4112; // [0°C-150°C] 4112*0.009 = 37.0°C 
     
     if( lepton3.enableRadiometry( true ) < 0)
     {
@@ -313,6 +315,21 @@ int main( int argc, char *argv[] )
             case 'Q':
             case 'q':
                 quit=true;
+            break;
+
+	    case 'R':
+            case 'r':
+                lepton3.rebootCamera();
+            break;
+
+	    case 'I':
+            case 'i':
+                lepton3.doFFC();
+            break;
+		
+            case 'W':
+            case 'w':
+                lepton3.saveParams();
             break;
         
             case 'P':
