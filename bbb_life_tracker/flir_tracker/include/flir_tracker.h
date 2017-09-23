@@ -20,7 +20,8 @@ public:
         TRK_FOLLOW  = 1
     } TrackMode;
 
-    FlirTracker(TrackMode trkMode, uint16_t minThresh, uint16_t maxThresh);
+    FlirTracker(TrackMode trkMode, uint16_t minThresh, uint16_t maxThresh, 
+        uint8_t rowMin=40, uint8_t rowMax=80);
     ~FlirTracker();
     
     void setNewThresh(uint16_t minThresh, uint16_t maxThresh);
@@ -31,6 +32,8 @@ public:
     static cv::Mat normalizeFrame( const cv::Mat& frame16, uint16_t min, uint16_t max );
     
     void nextPalette();
+    
+    void setMode( TrackMode newMode ){mTrkMode=newMode;}
         
 protected:
     TrackRes doTrackStep();
@@ -50,6 +53,12 @@ private:
     cv::Mat mResMask;
     
     uint8_t mPaletteIdx;
+    
+    uint8_t mRowMin;
+    uint8_t mRowMax;
+    
+    cv::Point mTargetPos;
+    cv::Mat mTargHist;
 };
 
 #endif

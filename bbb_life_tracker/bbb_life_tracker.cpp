@@ -181,7 +181,8 @@ int main( int argc, char *argv[] )
     }
 
     // Hypothesis: sensor is linear.
-    // If the range of the sensor is 0°-150° in High Gain mode
+    // If the range of the sensor is 0°-150° in High Gain mode, we can calculate the threasholds
+    // for "life temperature" between 30.0°C and 37.0°C
     uint16_t min_thresh = 3334; // [0°C-150°C] 3334*0.009 = 30.0°C 
     uint16_t max_thresh = 4112; // [0°C-150°C] 4112*0.009 = 37.0°C 
     
@@ -236,10 +237,13 @@ int main( int argc, char *argv[] )
 
     stpWtc.tic();
 
+    double period_mean=0.0;
+    double freq = 0.0;
+    uint16_t min;
+    uint16_t max;
+    
     while(!quit)
-    {
-        uint16_t min;
-        uint16_t max;
+    {        
         uint8_t w,h;
 
         const uint16_t* data16 = lepton3.getLastFrame16( w, h, &min, &max );
@@ -248,8 +252,9 @@ int main( int argc, char *argv[] )
         {
             double period_usec = stpWtc.toc();
             stpWtc.tic();
+	    period_mean = 0.9*period_mean + 0.1*period_usec;
 
-            double freq = (1000.*1000.)/period_usec;
+            freq = (1000.*1000.)/period_mean;
 
             cv::Mat frame16( h, w, CV_16UC1 );
 
@@ -282,7 +287,7 @@ int main( int argc, char *argv[] )
                 
                 if( deb_lvl>=Lepton3::DBG_FULL  )
                 {
-                    cout << "Frame Raw pushed" << endl;
+                    cout << "Frame Raw pushed" << "\r" << endl;
                 }
             }
 
@@ -294,7 +299,7 @@ int main( int argc, char *argv[] )
 
                 if( deb_lvl>=Lepton3::DBG_FULL  )
                 {
-                    cout << "Frame Res pushed" << endl;
+                    cout << "Frame Res pushed" << "\r" << endl;
                 }
             }
 
@@ -302,7 +307,7 @@ int main( int argc, char *argv[] )
 
             if( deb_lvl>=Lepton3::DBG_INFO  )
             {
-                cout << "> Frame period: " << period_usec <<  " usec - FPS: " << freq << endl;
+                cout << "> Frame period: " << period_mean <<  " usec - FPS: " << freq << "\r" << endl;
             }
         }
         
@@ -312,100 +317,114 @@ int main( int argc, char *argv[] )
         
         switch(c)
         {
-            case 'Q':
-            case 'q':
-                quit=true;
-            break;
+        case '1':
+            tracker.setMode( FlirTracker::TRK_AVOID );
+        break;
+        
+        case '2':
+            tracker.setMode( FlirTracker::TRK_FOLLOW );
+        break;            
+        
+	    case 'M':
+	    case 'm':
+            cout << "> Frame period: " << period_mean <<  " usec - FPS: " << freq << "\r" << endl; 
+            cout << "> Frame min: " << min <<  " - Frame max: " << max << "\r" << endl;           
+        break;
+
+        case 'Q':
+        case 'q':
+            quit=true;
+        break;
 
 	    case 'R':
-            case 'r':
-                lepton3.rebootCamera();
-            break;
+        case 'r':
+            lepton3.rebootCamera();
+        break;
 
 	    case 'I':
-            case 'i':
-                lepton3.doFFC();
-            break;
+        case 'i':
+            lepton3.doFFC();
+        break;
 		
-            case 'W':
-            case 'w':
-                lepton3.saveParams();
-            break;
+        case 'W':
+        case 'w':
+            lepton3.saveParams();
+        break;
+    
+        case 'P':
+        case 'p':
+            tracker.nextPalette();
+        break;                     
         
-            case 'P':
-            case 'p':
-                tracker.nextPalette();
-            break;                     
-            
-            case 'G':
-            case 'g':
-                min_thresh += 100;
-                max_thresh += 100;
-                tracker.setNewThresh(min_thresh, max_thresh);
-            break;
-            
-            case 'B':
-            case 'b':
-                min_thresh -= 100;
-                max_thresh -= 100;
-                tracker.setNewThresh(min_thresh, max_thresh);
-            break;
-             
-            case 'A':
-            case 'a':
-                printw("\r");
-                min_thresh += 10;
-                tracker.setNewThresh(min_thresh, max_thresh);
-            break;
-            
-            case 'Z':
-            case 'z':
-                printw("\r");
-                min_thresh -= 10;
-                tracker.setNewThresh(min_thresh, max_thresh);
-            break;
-            
-            case 'S':
-            case 's':
-                printw("\r");
-                min_thresh += 1;
-                tracker.setNewThresh(min_thresh, max_thresh);
-            break;
-            
-            case 'X':
-            case 'x':
-                printw("\r");
-                min_thresh -= 1;
-                tracker.setNewThresh(min_thresh, max_thresh);
-            break;
-            
-            case 'D':
-            case 'd':
-                printw("\r");
-                max_thresh += 10;
-                tracker.setNewThresh(min_thresh, max_thresh);
-            break;
-            
-            case 'C':
-            case 'c':
-                printw("\r");
-                max_thresh -= 10;
-                tracker.setNewThresh(min_thresh, max_thresh);
-            break;
-            
-            case 'F':
-            case 'f':
-                printw("\r");
-                max_thresh += 1;
-                tracker.setNewThresh(min_thresh, max_thresh);
-            break;
-            
-            case 'V':
-            case 'v':
-                printw("\r");
-                max_thresh -= 1;
-                tracker.setNewThresh(min_thresh, max_thresh);
-            break;        
+        case 'G':
+        case 'g':
+            min_thresh += 100;
+            max_thresh += 100;
+            tracker.setNewThresh(min_thresh, max_thresh);
+        break;
+        
+        case 'B':
+        case 'b':
+            min_thresh -= 100;
+            max_thresh -= 100;
+            tracker.setNewThresh(min_thresh, max_thresh);
+        break;
+         
+        case 'A':
+        case 'a':
+            printw("\r");
+            min_thresh += 10;
+            tracker.setNewThresh(min_thresh, max_thresh);
+        break;
+        
+        case 'Z':
+        case 'z':
+            printw("\r");
+            min_thresh -= 10;
+            tracker.setNewThresh(min_thresh, max_thresh);
+        break;
+        
+        case 'S':
+        case 's':
+            printw("\r");
+            min_thresh += 1;
+            tracker.setNewThresh(min_thresh, max_thresh);
+        break;
+        
+        case 'X':
+        case 'x':
+            printw("\r");
+            min_thresh -= 1;
+            tracker.setNewThresh(min_thresh, max_thresh);
+        break;
+        
+        case 'D':
+        case 'd':
+            printw("\r");
+            max_thresh += 10;
+            tracker.setNewThresh(min_thresh, max_thresh);
+        break;
+        
+        case 'C':
+        case 'c':
+            printw("\r");
+            max_thresh -= 10;
+            tracker.setNewThresh(min_thresh, max_thresh);
+        break;
+        
+        case 'F':
+        case 'f':
+            printw("\r");
+            max_thresh += 1;
+            tracker.setNewThresh(min_thresh, max_thresh);
+        break;
+        
+        case 'V':
+        case 'v':
+            printw("\r");
+            max_thresh -= 1;
+            tracker.setNewThresh(min_thresh, max_thresh);
+        break;        
         }        
            
         
