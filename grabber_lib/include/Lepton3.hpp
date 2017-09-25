@@ -87,8 +87,6 @@ public:
     LEP_RESULT enableRgbOutput( bool enable ); //!< Enable/Disable RGB video output format
     LEP_RESULT setRgbLut( ); //!< Set RGB LUT
 
-    // TODO Add function to set RGB palette
-
     bool isRgbEnable(){return mRgbEnabled;} //!< Verify if RGB video format is enabled
     
     LEP_RESULT doFFC(); //!< Performs FFC Normalization  

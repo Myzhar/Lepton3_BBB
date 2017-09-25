@@ -10,7 +10,6 @@ set(CMAKE_DEBUG_POSTFIX "_d")
 set (CMAKE_CXX_STANDARD 11)
 #########################################################
 
-
 # bbb_life_tracker
 add_subdirectory (bbb_life_tracker)
 

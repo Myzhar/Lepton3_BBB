@@ -102,27 +102,36 @@ FlirTracker::TrackRes FlirTracker::doTrackStep()
     }
     // <<<<< Target Histogram
     
-    // >>>>> Histogram normalization and target position
-    int count = 0;
-    mTargHist /= sum;
-    
-    for( int c=0; c<160; c++ )
+    if( sum > 0.0 ) // Target found
     {
-        double colValue = mTargHist.at<double>(c);
-        meanX += (c+1)*colValue;        
+        // >>>>> Histogram normalization and target position
+        mTargHist /= sum; // Normalization to Histogram value
+        
+        for( int c=0; c<160; c++ )
+        {
+            double colValue = mTargHist.at<double>(c);
+            meanX += (c+1)*colValue;        
+        }
+        
+        mTargetPos.x = static_cast<int>(meanX);
+        mTargetPos.y = 60;
+        // >>>>> Histogram normalization and target position   
+        
+        
+        // Histogram de-normalization for rendering
+        mTargHist *= sum;//cout << mResMask.cols << "x" << mResMask.rows << "\r\n";
+        
+        mTrackRes = TRK_RES_FOUND;
+        return mTrackRes;
     }
-    
-    mTargetPos.x = static_cast<int>(meanX);
-    mTargetPos.y = 60;
-    // >>>>> Histogram normalization and target position    
-    
-    // Histogram de-normalization for rendering
-    mTargHist *= sum;//cout << mResMask.cols << "x" << mResMask.rows << "\r\n";
-    
-    if(sum>0)
-        return TRK_RES_FOUND;
     else
-        return TRK_RES_NONE;
+    {
+        mTargetPos.x = 80;
+        mTargetPos.y = 60;
+        
+        mTrackRes = TRK_RES_NONE;
+        return mTrackRes;
+    }        
 }
 
 void FlirTracker::nextPalette()
@@ -172,40 +181,75 @@ cv::Mat FlirTracker::getResFrameRGB()
     
     int w = 2*(mRowMax-mRowMin)/3;
        
-    
-    string txt;
+    double error = 0.0;
+       
+    string modeStr;
     if(mTrkMode == TRK_FOLLOW)
     { 
-        txt="TARGET FOLLOW";
+        modeStr = "TARGET FOLLOW";
         
         cv::line( mResRGB, cv::Point((160-w)/2,mRowMin), cv::Point((160-w)/2,mRowMax), cv::Scalar(255,255,255), 1  );
         cv::line( mResRGB, cv::Point((160+w)/2,mRowMin), cv::Point((160+w)/2,mRowMax), cv::Scalar(255,255,255), 1  );
+        
+        if( mTrackRes == TRK_RES_FOUND )
+        {
+            // Target
+            cv::circle( mResRGB, mTargetPos, 2, cv::Scalar(255,255,255), -1 );
+            cv::line( mResRGB, cv::Point(80,60), mTargetPos, cv::Scalar(255,255,255), 1  );
+            
+            error = static_cast<double>(80-mTargetPos.x)/80;
+        }
     }
     else
     {
-        txt="OBSTACLE AVOIDANCE";
+        modeStr = "OBSTACLE AVOIDANCE";
         
         cv::line( mResRGB, cv::Point(w,mRowMin), cv::Point(w,mRowMax), cv::Scalar(255,255,255), 1  );
         cv::line( mResRGB, cv::Point(160-w,mRowMin), cv::Point(160-w,mRowMax), cv::Scalar(255,255,255), 1  );
+        
+        if( mTrackRes == TRK_RES_FOUND )
+        {
+            // Target
+            cv::circle( mResRGB, mTargetPos, 2, cv::Scalar(255,255,255), -1 );
+            cv::Point goal;
+            goal.y = 60;
+            
+            if( mTargetPos.x > 80 )
+            {
+                goal.x = (160-w/2);       
+            }
+            else
+            {
+                goal.x = w/2;   
+            }
+            
+            cv::line( mResRGB, goal, mTargetPos, cv::Scalar(255,255,255), 1  );
+            
+            error = static_cast<double>(goal.x-mTargetPos.x)/(80-w/2);
+        }
     }
     
-    cv::putText( mResRGB, txt, cv::Point( 2,118 ), cv::FONT_HERSHEY_PLAIN, 0.8, cv::Scalar(255,255,255), 1 );
+    cv::putText( mResRGB, modeStr, cv::Point( 2,118 ), cv::FONT_HERSHEY_PLAIN, 0.8, cv::Scalar(255,255,255), 1 );
     
-    // Target
-    cv::circle( mResRGB, mTargetPos, 2, cv::Scalar(255,255,255), -1 );
+    std::string errStr = "Error: ";
+    errStr += std::to_string(error);
+    
+    cv::putText( mResRGB, errStr, cv::Point( 2,15 ), cv::FONT_HERSHEY_PLAIN, 0.8, cv::Scalar(255,255,255), 1 );
     
     // >>>>> Target Histogram
     int histY = 107;
-    int histH = (histY-mRowMax)-2;
+    int histH = (histY-mRowMax)-5;
+    cv::line( mResRGB, cv::Point(0,histY-(histH+1)), cv::Point(160,histY-(histH+1)), cv::Scalar(255,255,255), 1  );
+    
     for( int c=0; c<160; c++ )
     {
         double colValue = mTargHist.at<double>(c);        
         int h = colValue * histH;
         
         double dist = fabs(c-mTargetPos.x);
-        double norm = dist>40?1.0:dist/40.0;
+        double norm = dist>20?1.0:dist/20.0;
         
-        cv::Scalar color = cv::Scalar(255,255.0*norm,100);
+        cv::Scalar color = cv::Scalar(255,255.0*norm,255*norm);
        
         cv::line( mResRGB, cv::Point(c,histY), cv::Point(c,histY-h), color, 1  );
     }

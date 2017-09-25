@@ -27,6 +27,7 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     , mRgbEnabled(false)
 {
     // >>>>> CCI
+    mCciConnected = false;
     mCciPort = cciPort;
     // <<<<< CCI
 

@@ -59,6 +59,8 @@ private:
     
     cv::Point mTargetPos;
     cv::Mat mTargHist;
+    
+    TrackRes mTrackRes;
 };
 
 #endif
