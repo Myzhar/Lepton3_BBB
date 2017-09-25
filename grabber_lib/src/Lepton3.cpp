@@ -526,24 +526,26 @@ void Lepton3::thread_func()
         // the host with the device
         if( notValidCount>=30 )
         {
-	    resync();
+	        resync();
             
             notValidCount=0;
         }
 
-	if( mResyncCount >=30 ) // Camera locked!
-	{
-        if( saveParams() == LEP_OK ) // Write current settings to OTP
-        {
-	       // Force a camera reboot           
-           rebootCamera();
-           
-           cout << "Waiting for camera ready \r\n";
-           std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+	    if( mResyncCount == 30 ) // Camera locked!
+	    {
+	        mResyncCount=0;
+	        
+            if( saveParams() == LEP_OK ) // Write current settings to OTP
+            {
+	           // Force a camera reboot           
+               rebootCamera();
+               
+               cout << "Waiting for camera ready \r\n";
+               std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-           mResyncCount=0;
+               mResyncCount=0;
+	        }
 	    }
-	}
 
         mBuffMutex.unlock();
 
@@ -1030,8 +1032,7 @@ LEP_RESULT Lepton3::rebootCamera()
     }
     
     cout << "Performing Reboot .....\r" << "\r\n";
-
-    cout << "..... Camera Power Down .....\r" << "\r\n";	
+    
     if( LEP_RunOemReboot( &mCciConnPort )  != LEP_OK )
     {
             cerr << "Cannot power down the camera" << "\r\n";
