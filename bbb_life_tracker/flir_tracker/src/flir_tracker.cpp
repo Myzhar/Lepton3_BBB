@@ -8,6 +8,8 @@
 
 using namespace std;
 
+#define RAW2CELSIUS 0.009
+
 FlirTracker::FlirTracker(TrackMode trkMode, uint16_t minThresh, uint16_t maxThresh, 
 	uint8_t rowMin/*=40*/, uint8_t rowMax/*=100*/)
     : mTrkMode(trkMode)
@@ -56,8 +58,8 @@ void FlirTracker::setNewThresh(uint16_t minThresh, uint16_t maxThresh)
     mMinThresh = minThresh;
     mMaxThresh = maxThresh;
     
-    cout << "New MIN thresh: " << (int)mMinThresh << "(" << static_cast<double>(mMinThresh)*0.009 <<
-            "°C) - New MAX thresh: " << mMaxThresh << "(" << static_cast<double>(mMaxThresh)*0.009 
+    cout << "New MIN thresh: " << (int)mMinThresh << " (" << static_cast<double>(mMinThresh)*RAW2CELSIUS <<
+            "°C) - New MAX thresh: " << mMaxThresh << " (" << static_cast<double>(mMaxThresh)*RAW2CELSIUS 
             << "°C)\r" << endl;
 }
 
@@ -194,12 +196,18 @@ cv::Mat FlirTracker::getResFrameRGB()
     
     // >>>>> Target Histogram
     int histY = 107;
-    int histH = (histY-mRowMax)-1;
+    int histH = (histY-mRowMax)-2;
     for( int c=0; c<160; c++ )
     {
         double colValue = mTargHist.at<double>(c);        
         int h = colValue * histH;
-        cv::line( mResRGB, cv::Point(c,histY), cv::Point(c,histY-h), cv::Scalar(255,255,255), 1  );
+        
+        double dist = fabs(c-mTargetPos.x);
+        double norm = dist>40?1.0:dist/40.0;
+        
+        cv::Scalar color = cv::Scalar(255,255.0*norm,100);
+       
+        cv::line( mResRGB, cv::Point(c,histY), cv::Point(c,histY-h), color, 1  );
     }
     // <<<<< Target Histogram */
 

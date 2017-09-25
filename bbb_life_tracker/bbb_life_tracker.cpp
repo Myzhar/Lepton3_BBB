@@ -161,6 +161,11 @@ int main( int argc, char *argv[] )
 
     Lepton3 lepton3( "/dev/spidev1.0", 1, deb_lvl );
     
+    /*/ >>>>> Init reboot
+    lepton3.rebootCamera();    
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    // <<<<< Init reboot */
+    
     if( lepton3.enableAgc( false ) < 0)
     {
         cerr << "Failed to disable AGC" << endl;
@@ -215,12 +220,7 @@ int main( int argc, char *argv[] )
     }
 
     FlirTracker tracker( trkMode, min_thresh, max_thresh );
-    // <<<<< Tracker
-
-    if( lepton3.doFFC() != LEP_OK )
-    {
-        return EXIT_FAILURE;
-    }
+    // <<<<< Tracker    
     
     // >>>>> Get char without enter
     initscr();
@@ -241,6 +241,11 @@ int main( int argc, char *argv[] )
     double freq = 0.0;
     uint16_t min;
     uint16_t max;
+    
+    /*if( lepton3.doFFC() != LEP_OK )
+    {
+        return EXIT_FAILURE;
+    }*/
     
     while(!quit)
     {        
@@ -308,6 +313,12 @@ int main( int argc, char *argv[] )
             if( deb_lvl>=Lepton3::DBG_INFO  )
             {
                 cout << "> Frame period: " << period_mean <<  " usec - FPS: " << freq << "\r" << endl;
+            }
+            
+            
+            if( frameIdx == 50 )
+            {
+                lepton3.doFFC();
             }
         }
         
@@ -431,7 +442,7 @@ int main( int argc, char *argv[] )
         // <<<<< Keyboard interaction        
         
         //refresh();
-        std::this_thread::sleep_for(std::chrono::milliseconds(110));
+        std::this_thread::sleep_for(std::chrono::milliseconds(90));
     }
 
     lepton3.stop();

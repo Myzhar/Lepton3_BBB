@@ -73,7 +73,7 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     mDebugLvl = dbgLvl;
 
     if( mDebugLvl>=DBG_INFO )
-        cout << "Debug level: " << mDebugLvl << endl;
+        cout << "Debug level: " << mDebugLvl << "\r\n";
 
     mStop = false;
     mResyncCount = 0;
@@ -179,66 +179,66 @@ bool Lepton3::SpiOpenPort( )
     int status_value = -1;
 
     if( mDebugLvl>=DBG_INFO )
-        cout << "Opening SPI device: " << mSpiDevice.c_str() << endl;
+        cout << "Opening SPI device: " << mSpiDevice.c_str() << "\r\n";
 
     mSpiFd = open(mSpiDevice.c_str(), O_RDWR);
 
     if(mSpiFd < 0)
     {
-        cerr << "Error - Could not open SPI device: " << mSpiDevice.c_str() << endl;
+        cerr << "Error - Could not open SPI device: " << mSpiDevice.c_str() << "\r\n";
         return false;
     }
 
     status_value = ioctl(mSpiFd, SPI_IOC_WR_MODE, &mSpiMode);
     if(status_value < 0)
     {
-        cerr << "Could not set SPIMode (WR)...ioctl fail" << endl;
+        cerr << "Could not set SPIMode (WR)...ioctl fail" << "\r\n";
         return false;
     }
 
     status_value = ioctl(mSpiFd, SPI_IOC_RD_MODE, &mSpiMode);
     if(status_value < 0)
     {
-        cerr << "Could not set SPIMode (RD)...ioctl fail" << endl;
+        cerr << "Could not set SPIMode (RD)...ioctl fail" << "\r\n";
         return -1;
     }
 
     if( mDebugLvl>=DBG_INFO )
-        cout << "SPI mode: " << (int)mSpiMode << endl;
+        cout << "SPI mode: " << (int)mSpiMode << "\r\n";
 
     status_value = ioctl(mSpiFd, SPI_IOC_WR_BITS_PER_WORD, &mSpiBits);
     if(status_value < 0)
     {
-        cerr << "Could not set SPI bitsPerWord (WR)...ioctl fail" << endl;
+        cerr << "Could not set SPI bitsPerWord (WR)...ioctl fail" << "\r\n";
         return false;
     }
 
     status_value = ioctl(mSpiFd, SPI_IOC_RD_BITS_PER_WORD, &mSpiBits);
     if(status_value < 0)
     {
-        cerr << "Could not set SPI bitsPerWord(RD)...ioctl fail" << endl;
+        cerr << "Could not set SPI bitsPerWord(RD)...ioctl fail" << "\r\n";
         return false;
     }
 
     if( mDebugLvl>=DBG_INFO )
-        cout << "SPI bits per word: " << (int)mSpiBits << endl;
+        cout << "SPI bits per word: " << (int)mSpiBits << "\r\n";
 
     status_value = ioctl(mSpiFd, SPI_IOC_WR_MAX_SPEED_HZ, &mSpiSpeed);
     if(status_value < 0)
     {
-        cerr << "Could not set SPI speed (WR)...ioctl fail" << endl;
+        cerr << "Could not set SPI speed (WR)...ioctl fail" << "\r\n";
         return false;
     }
 
     status_value = ioctl(mSpiFd, SPI_IOC_RD_MAX_SPEED_HZ, &mSpiSpeed);
     if(status_value < 0)
     {
-        cerr << "Could not set SPI speed (RD)...ioctl fail" << endl;
+        cerr << "Could not set SPI speed (RD)...ioctl fail" << "\r\n";
         return false;
     }
 
     if( mDebugLvl>=DBG_INFO )
-        cout << "SPI max speed: " << (int)mSpiSpeed << endl;
+        cout << "SPI max speed: " << (int)mSpiSpeed << "\r\n";
 
     return true;
 }
@@ -261,7 +261,7 @@ int Lepton3::SpiReadSegment()
     {
         if( mDebugLvl>=DBG_FULL )
         {
-            cout << "SPI device not open. Trying to open it..." << endl;
+            cout << "SPI device not open. Trying to open it..." << "\r\n";
         }
         if( !SpiOpenPort() )
             return -1;
@@ -291,7 +291,7 @@ int Lepton3::SpiReadSegment()
         int ret = ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
         if (ret == 1)
         {
-            cerr << "Error reading full segment from SPI" << endl;
+            cerr << "Error reading full segment from SPI" << "\r\n";
             return -1;
         }
 
@@ -317,7 +317,7 @@ int Lepton3::SpiReadSegment()
     int ret = ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
     if (ret == 1)
     {
-        cerr << "Error reading full segment from SPI" << endl;
+        cerr << "Error reading full segment from SPI" << "\r\n";
         return -1;
     }
     // <<<<< Segment reading
@@ -342,7 +342,7 @@ int Lepton3::SpiReadSegment()
     {
         if( mDebugLvl>=DBG_INFO )
         {
-            cout << "Wrong Packet ID for TTT in segment" << endl;
+            cout << "Wrong Packet ID for TTT in segment" << "\r\n";
         }
 
         return -1;
@@ -357,7 +357,7 @@ int Lepton3::SpiReadSegment()
 void Lepton3::thread_func()
 {
     if( mDebugLvl>=DBG_INFO )
-        cout << "Grabber thread started ..." << endl;
+        cout << "Grabber thread started ..." << "\r\n";
 
     mStop = false;
 
@@ -365,12 +365,12 @@ void Lepton3::thread_func()
 
     if( !SpiOpenPort() )
     {
-        cerr << "Grabber thread stopped on starting for SPI error" << endl;
+        cerr << "Grabber thread stopped on starting for SPI error" << "\r\n";
         return;
     }
 
     if( mDebugLvl>=DBG_FULL )
-        cout << "SPI fd: " << mSpiFd << endl;
+        cout << "SPI fd: " << mSpiFd << "\r\n";
 
     int notValidCount = 0;
     mCurrSegm = 0;
@@ -399,13 +399,13 @@ void Lepton3::thread_func()
         if( mDebugLvl>=DBG_FULL )
         {
             cout << endl << "Thread period: " << threadPeriod << " usec - VoSPI Available: "
-                 << usecAvail << " usec" << endl;
+                 << usecAvail << " usec" << "\r\n";
         }
 
         if( mDebugLvl>=DBG_INFO )
         {
             cout << "VoSPI segment acquire freq: " << (1000.0*1000.0)/threadPeriod
-                 << " hz" << endl;
+                 << " hz" << "\r\n";
         }
         // <<<<< Timing info
 
@@ -422,7 +422,7 @@ void Lepton3::thread_func()
         if( mDebugLvl>=DBG_FULL )
         {
             double elapsed = testTime1.toc();
-            cout << "VoSPI segment read time " << elapsed << " usec" << endl;
+            cout << "VoSPI segment read time " << elapsed << " usec" << "\r\n";
         }
         // <<<<< Acquire single segment
 
@@ -465,7 +465,7 @@ void Lepton3::thread_func()
                     {
                         cout << endl
                              << "************************ FRAME COMPLETE " \
-                                "************************" << endl;
+                                "************************" << "\r\n";
                     }
 
                     // >>>>> RAW to image data conversion
@@ -486,7 +486,7 @@ void Lepton3::thread_func()
                     if( mDebugLvl>=DBG_FULL )
                     {
                         double elapsed = testTime2.toc();
-                        cout << "VoSPI frame conversion time " << elapsed << " usec" << endl;
+                        cout << "VoSPI frame conversion time " << elapsed << " usec" << "\r\n";
                     }
                     // <<<<< RAW to image data conversion
                 }
@@ -502,7 +502,7 @@ void Lepton3::thread_func()
             
             if( mDebugLvl>=DBG_FULL )
             {
-                cout << endl;
+                cout << "\r\n";
             }
         }
         else
@@ -516,7 +516,7 @@ void Lepton3::thread_func()
         if( mDebugLvl>=DBG_FULL )
         {
             double elapsed = testTime1.toc();
-            cout << "VoSPI segment check time " << elapsed << " usec" << endl;
+            cout << "VoSPI segment check time " << elapsed << " usec" << "\r\n";
         }
         // <<<<< Segment check
         
@@ -533,12 +533,15 @@ void Lepton3::thread_func()
 
 	if( mResyncCount >=30 ) // Camera locked!
 	{
-            if( saveParams() == LEP_OK ) // Write current settings to OTP
-            {
-	       // Force a camera reboot
-               rebootCamera();
+        if( saveParams() == LEP_OK ) // Write current settings to OTP
+        {
+	       // Force a camera reboot           
+           rebootCamera();
+           
+           cout << "Waiting for camera ready \r\n";
+           std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-               mResyncCount=0;
+           mResyncCount=0;
 	    }
 	}
 
@@ -547,7 +550,7 @@ void Lepton3::thread_func()
         if( mStop )
         {
             if( mDebugLvl>=DBG_INFO )
-                cout << "... grabber thread stopped ..." << endl;
+                cout << "... grabber thread stopped ..." << "\r\n";
 
             break;
         }
@@ -557,7 +560,7 @@ void Lepton3::thread_func()
     SpiClosePort();
 
     if( mDebugLvl>=DBG_INFO )
-        cout << "... grabber thread finished" << endl;
+        cout << "... grabber thread finished" << "\r\n";
 }
 
 void Lepton3::resync()
@@ -566,7 +569,7 @@ void Lepton3::resync()
 
     //if( mDebugLvl>=DBG_INFO )
     {
-        cout << endl << "*** Forcing RESYNC *** [" << mResyncCount << "]\r" << endl;
+        cout << endl << "*** Forcing RESYNC *** [" << mResyncCount << "]\r" << "\r\n";
     }
 
     // >>>>> Resync
@@ -592,7 +595,7 @@ bool Lepton3::CciConnect()
 
     if (result != LEP_OK)
     {
-        cerr << "Cannot connect CCI port (I2C)" << endl;
+        cerr << "Cannot connect CCI port (I2C)" << "\r\n";
         return false;
     }
 
@@ -614,7 +617,7 @@ LEP_RESULT Lepton3::getSensorTemperatureK(float& tempK )
 
     if (result != LEP_OK)
     {
-        cerr << "Cannot read lepton FPA temperature" << endl;
+        cerr << "Cannot read lepton FPA temperature" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -645,7 +648,7 @@ LEP_RESULT Lepton3::lepton_perform_ffc()
 
     if( LEP_RunSysFFCNormalization(&mCciConnPort) != LEP_OK )
     {
-        cerr << "Could not perform FFC Normalization" << endl;
+        cerr << "Could not perform FFC Normalization" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -666,7 +669,7 @@ LEP_RESULT Lepton3::enableTelemetry( bool enable )
 
     if( LEP_GetSysTelemetryEnableState(&mCciConnPort, (LEP_SYS_TELEMETRY_ENABLE_STATE_E_PTR)&tel_status ) != LEP_OK )
     {
-        cerr << "Cannot read Telemetry status" << endl;
+        cerr << "Cannot read Telemetry status" << "\r\n";
 
         mBuffMutex.unlock();
         return LEP_ERROR;
@@ -678,7 +681,7 @@ LEP_RESULT Lepton3::enableTelemetry( bool enable )
     {
         if( LEP_SetSysTelemetryEnableState(&mCciConnPort, new_status ) != LEP_OK )
         {
-            cerr << "Cannot set Telemetry status" << endl;
+            cerr << "Cannot set Telemetry status" << "\r\n";
 
             mBuffMutex.unlock();
             return LEP_ERROR;
@@ -703,7 +706,7 @@ LEP_RESULT Lepton3::getTelemetryStatus( bool &status )
 
     if( LEP_GetSysTelemetryEnableState(&mCciConnPort, (LEP_SYS_TELEMETRY_ENABLE_STATE_E_PTR)&tel_status ) != LEP_OK )
     {
-        cerr << "Cannot read Telemetry status" << endl;
+        cerr << "Cannot read Telemetry status" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -732,7 +735,7 @@ LEP_RESULT Lepton3::getRadiometryStatus( bool& status )
 
     if( LEP_GetRadEnableState(&mCciConnPort, (LEP_RAD_ENABLE_E_PTR)&rad_status ) != LEP_OK )
     {
-        cerr << "Cannot read Radiometry status" << endl;
+        cerr << "Cannot read Radiometry status" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -756,7 +759,7 @@ LEP_RESULT Lepton3::enableRadiometry( bool enable )
 
     if( LEP_GetRadEnableState(&mCciConnPort, (LEP_RAD_ENABLE_E_PTR)&rad_status ) != LEP_OK )
     {
-        cerr << "Cannot read Radiometry status" << endl;
+        cerr << "Cannot read Radiometry status" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -766,7 +769,7 @@ LEP_RESULT Lepton3::enableRadiometry( bool enable )
     {
         if( LEP_SetRadEnableState(&mCciConnPort, new_status ) != LEP_OK )
         {
-            cerr << "Cannot set Radiometry status" << endl;
+            cerr << "Cannot set Radiometry status" << "\r\n";
             return LEP_ERROR;
         }
     }
@@ -786,7 +789,7 @@ LEP_RESULT Lepton3::getAgcStatus(bool &status)
 
     if( LEP_GetAgcEnableState( &mCciConnPort, (LEP_AGC_ENABLE_E_PTR)&agc_status ) != LEP_OK )
     {
-        cerr << "Cannot read AGC status" << endl;
+        cerr << "Cannot read AGC status" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -810,7 +813,7 @@ LEP_RESULT Lepton3::enableAgc( bool enable )
 
     if( LEP_GetAgcEnableState(&mCciConnPort, (LEP_AGC_ENABLE_E_PTR)&agc_status ) != LEP_OK )
     {
-        cerr << "Cannot read AGC status" << endl;
+        cerr << "Cannot read AGC status" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -820,7 +823,7 @@ LEP_RESULT Lepton3::enableAgc( bool enable )
     {
         if( LEP_SetAgcEnableState(&mCciConnPort, new_status ) != LEP_OK )
         {
-            cerr << "Cannot set Radiometry status" << endl;
+            cerr << "Cannot set Radiometry status" << "\r\n";
             return LEP_ERROR;
         }
     }
@@ -838,7 +841,7 @@ LEP_RESULT Lepton3::getGainMode( LEP_SYS_GAIN_MODE_E& mode)
 
     if( LEP_GetSysGainMode( &mCciConnPort, (LEP_SYS_GAIN_MODE_E_PTR)&mode ) != LEP_OK )
     {
-        cerr << "Cannot read Sys Gain Mode" << endl;
+        cerr << "Cannot read Sys Gain Mode" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -857,7 +860,7 @@ LEP_RESULT Lepton3::setGainMode( LEP_SYS_GAIN_MODE_E newMode )
 
     if( LEP_GetSysGainMode( &mCciConnPort, (LEP_SYS_GAIN_MODE_E_PTR)&curr_mode ) != LEP_OK )
     {
-        cerr << "Cannot get Gain Mode" << endl;
+        cerr << "Cannot get Gain Mode" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -865,7 +868,7 @@ LEP_RESULT Lepton3::setGainMode( LEP_SYS_GAIN_MODE_E newMode )
     {
         if( LEP_SetSysGainMode(&mCciConnPort, newMode ) != LEP_OK )
         {
-            cerr << "Cannot set Gain Mode" << endl;
+            cerr << "Cannot set Gain Mode" << "\r\n";
             return LEP_ERROR;
         }
     }
@@ -883,7 +886,7 @@ LEP_RESULT Lepton3::getVideoOutputFormat( LEP_OEM_VIDEO_OUTPUT_FORMAT_E& format 
 
     if( LEP_GetOemVideoOutputFormat( &mCciConnPort, (LEP_OEM_VIDEO_OUTPUT_FORMAT_E_PTR)&format ) != LEP_OK )
     {
-        cerr << "Cannot read Video Output format" << endl;
+        cerr << "Cannot read Video Output format" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -915,7 +918,7 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
         // >>>>> Disable Telemetry
         if( LEP_SetSysTelemetryEnableState(&mCciConnPort, LEP_TELEMETRY_DISABLED ) != LEP_OK )
         {
-            cerr << "Cannot disable Telemetry" << endl;
+            cerr << "Cannot disable Telemetry" << "\r\n";
 
             mBuffMutex.unlock();
             return LEP_ERROR;
@@ -925,7 +928,7 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
         // >>>>> Enable AGC
         if( LEP_SetAgcEnableState(&mCciConnPort, LEP_AGC_ENABLE ) != LEP_OK ) // RGB888 requires AGC enabled
         {
-            cerr << "Cannot enable AGC" << endl;
+            cerr << "Cannot enable AGC" << "\r\n";
 
             mBuffMutex.unlock();
             return LEP_ERROR;
@@ -935,7 +938,7 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
         // TODO Make function to set LUT
         if( LEP_SetVidPcolorLut(&mCciConnPort,LEP_VID_FUSION_LUT) != LEP_OK ) // Default RGB LUT
         {
-            cerr << "Cannot set LUT" << endl;
+            cerr << "Cannot set LUT" << "\r\n";
 
             mBuffMutex.unlock();
             return LEP_ERROR;
@@ -950,7 +953,7 @@ LEP_RESULT Lepton3::enableRgbOutput( bool enable )
     {
         if( LEP_SetOemVideoOutputFormat( &mCciConnPort, newFormat ) != LEP_OK )
         {
-            cerr << "Cannot set Video Output format" << endl;
+            cerr << "Cannot set Video Output format" << "\r\n";
 
             mBuffMutex.unlock();
             return LEP_ERROR;
@@ -974,11 +977,11 @@ LEP_RESULT Lepton3::doFFC()
     
     mBuffMutex.lock();
     
-    cout << "Performing FFC Normalization ....." << endl;
+    cout << "Performing FFC Normalization ....." << "\r\n";
     
     if( LEP_SetSysShutterPosition( &mCciConnPort, LEP_SYS_SHUTTER_POSITION_CLOSED )  != LEP_OK )
     {
-            cerr << "Cannot close shutter" << endl;
+            cerr << "Cannot close shutter" << "\r\n";
             
             mBuffMutex.unlock();
             return LEP_ERROR;
@@ -986,7 +989,7 @@ LEP_RESULT Lepton3::doFFC()
     
     if( LEP_RunSysFFCNormalization( &mCciConnPort ) != LEP_OK )
     {
-            cerr << "Cannot perform FFC normalization" << endl;
+            cerr << "Cannot perform FFC normalization" << "\r\n";
             
             mBuffMutex.unlock();
             return LEP_ERROR;
@@ -997,7 +1000,7 @@ LEP_RESULT Lepton3::doFFC()
     {   
         if( LEP_GetSysFFCStatus( &mCciConnPort, &ffc_status ) != LEP_OK )
         {
-            cerr << "Cannot get FFC normalization status" << endl;
+            cerr << "Cannot get FFC normalization status" << "\r\n";
             
             mBuffMutex.unlock();
             return LEP_ERROR;
@@ -1006,13 +1009,13 @@ LEP_RESULT Lepton3::doFFC()
     
     if( LEP_SetSysShutterPosition( &mCciConnPort, LEP_SYS_SHUTTER_POSITION_OPEN )  != LEP_OK )
     {
-            cerr << "Cannot open shutter" << endl;
+            cerr << "Cannot open shutter" << "\r\n";
             
             mBuffMutex.unlock();
             return LEP_ERROR;
     }
     
-    cout << "..... FFC Normalization DONE" << endl;
+    cout << "..... FFC Normalization DONE" << "\r\n";
     
     mBuffMutex.unlock();
     return LEP_OK;
@@ -1026,17 +1029,17 @@ LEP_RESULT Lepton3::rebootCamera()
             return LEP_ERROR;
     }
     
-    cout << "Performing Reboot .....\r" << endl;
+    cout << "Performing Reboot .....\r" << "\r\n";
 
-    cout << "..... Camera Power Down .....\r" << endl;	
+    cout << "..... Camera Power Down .....\r" << "\r\n";	
     if( LEP_RunOemReboot( &mCciConnPort )  != LEP_OK )
     {
-            cerr << "Cannot power down the camera" << endl;
+            cerr << "Cannot power down the camera" << "\r\n";
             
             return LEP_ERROR;
     }
 
-    cout << "..... Reboot Done \r" << endl;
+    cout << "..... Reboot Done \r" << "\r\n";
 }
 
 LEP_RESULT Lepton3::saveParams()
@@ -1049,12 +1052,12 @@ LEP_RESULT Lepton3::saveParams()
     
     if( LEP_RunOemUserDefaultsCopyToOtp( &mCciConnPort )  != LEP_OK )
     {
-            cerr << "Cannot power down the camera" << endl;
+            cerr << "Cannot save params to camera" << "\r\n";
             
             return LEP_ERROR;
     }
 
-    cout << "Current Parameters saved to OTP\r" << endl;
+    cout << "Current Parameters saved to OTP\r" << "\r\n";
 }
 
 
@@ -1070,7 +1073,7 @@ LEP_RESULT Lepton3::saveParams()
 
     if( LEP_GetRadSpotmeterRoi( &mCciConnPort, (LEP_RAD_ROI_T_PTR)&roi ) != LEP_OK )
     {
-        cerr << "Cannot read Spotmeter ROI" << endl;
+        cerr << "Cannot read Spotmeter ROI" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -1098,7 +1101,7 @@ LEP_RESULT Lepton3::setSpotROI( uint16_t x, uint16_t y, uint16_t w, uint16_t h )
 
     if( LEP_SetRadSpotmeterRoi( &mCciConnPort, newROI ) != LEP_OK )
     {
-        cerr << "Cannot set Spotmeter ROI" << endl;
+        cerr << "Cannot set Spotmeter ROI" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -1117,7 +1120,7 @@ LEP_RESULT Lepton3::getSpotInfo( float& valueK, float& minK, float& maxK, uint16
 
     if( LEP_GetRadSpotmeterObjInKelvinX100( &mCciConnPort, (LEP_RAD_SPOTMETER_OBJ_KELVIN_T_PTR)&info ) != LEP_OK )
     {
-        cerr << "Cannot read Spotmeter info" << endl;
+        cerr << "Cannot read Spotmeter info" << "\r\n";
         return LEP_ERROR;
     }
 
@@ -1178,11 +1181,11 @@ void Lepton3::raw2data16()
     
     if( mDebugLvl>=DBG_INFO )
     {
-        cout << endl << "Min: " << mMin << " - Max: " << mMax << endl;
-        cout << "---------------------------------------------------" << endl;
+        cout << endl << "Min: " << mMin << " - Max: " << mMax << "\r\n";
+        cout << "---------------------------------------------------" << "\r\n";
     }
     
-    // cout << pixIdx << endl;
+    // cout << pixIdx << "\r\n";
 
     mDataValid[mBuffIdx] = true;
     mBuffIdx = (mBuffIdx+1)%MULTI_BUFF_SIZE;
@@ -1212,7 +1215,7 @@ void Lepton3::raw2RGB()
 
         mDataFrameBufRGB[mBuffIdx][pixIdx] = frameBuffer[i];
         //cout << "byteCount: " << byteCount << " - pxPackSize: " << pxPackSize;
-        //cout << " - Idx: " << pixIdx << " - i: " << i << endl;
+        //cout << " - Idx: " << pixIdx << " - i: " << i << "\r\n";
         pixIdx++;
     }
 
