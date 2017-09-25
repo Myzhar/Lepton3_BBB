@@ -15,7 +15,7 @@ Usage: ```bbb_life_tracker <trk_mode> <debug_ip_address> <raw_port> <res_port>  
 * debug_level [optional]:
   **0** *[default] (no debug)*- **1** *(info debug) - **2** (full debug)*
 
-##To receive the RAW stream:
+## To receive the RAW stream:
 
 **Unicast:**
 
@@ -25,7 +25,7 @@ Usage: ```bbb_life_tracker <trk_mode> <debug_ip_address> <raw_port> <res_port>  
 
 ```gst-launch-1.0 udpsrc address=239.0.0.115 port=16000 multicast-iface="wlan0" ! application/x-rtp, media=video, clock-rate=90000, encoding-name=H264 ! rtph264depay ! avdec_h264 ! videoconvert ! queue ! videoscale ! video/x-raw,width=320,height=240 ! autovideosink```
 
-##To receive the DEBUG/INFO stream:
+## To receive the DEBUG/INFO stream:
 
 **Unicast:**
 ```gst-launch-1.0 udpsrc port=15000 ! application/x-rtp, media=video, clock-rate=90000, encoding-name=H264 ! rtph264depay ! avdec_h264 ! videoconvert ! queue ! videoscale ! video/x-raw,width=640,height=480 ! autovideosink```
