@@ -14,6 +14,14 @@ Usage: ```bbb_life_tracker <trk_mode> <debug_ip_address> <raw_port> <res_port>  
 * *multicast_interface* -> the network interface to multicast the video stream [use '' for unicast]
 * debug_level [optional]:
   **0** *[default] (no debug)*- **1** *(info debug) - **2** (full debug)*
+  
+**Unicast example:**
+
+```bbb_life_tracker -A 192.168.7.1 16000 15000 ""```
+
+**Multicast example:**
+
+```bbb_life_tracker -A 239.0.0.115 16000 15000 "wlan0"```
 
 ## To receive the RAW stream:
 
