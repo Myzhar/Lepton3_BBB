@@ -61,8 +61,7 @@ public:
     // >>>>> Controls
     LEP_RESULT lepton_perform_ffc();              //!< Force FFC calculation
     LEP_RESULT getSensorTemperatureK(float& tempK);          //!< Get Temperature of the Flir Sensor in °K
-    float raw2Celsius(float raw);               //!< Converts a RAW value to °C
-
+    
     LEP_RESULT enableRadiometry( bool enable );    //!< Enable/Disable radiometry
     LEP_RESULT getRadiometryStatus(bool &status);  //!< Verify if Radiometry is enabled or not
 
@@ -84,15 +83,18 @@ public:
     // TODO Add telemetry parsing function
 
     LEP_RESULT getVideoOutputFormat( LEP_OEM_VIDEO_OUTPUT_FORMAT_E& format  ); //!< Get Video Output format
-    LEP_RESULT enableRgbOutput( bool enable ); //!< Enable/Disable RGB video output format
-    LEP_RESULT setRgbLut( ); //!< Set RGB LUT
-
+    
     bool isRgbEnable(){return mRgbEnabled;} //!< Verify if RGB video format is enabled
+    LEP_RESULT enableRgbOutput( bool enable ); //!< Enable/Disable RGB video output format
+    LEP_RESULT setRgbLut( ); //!< Set RGB LUT    
     
     LEP_RESULT doFFC(); //!< Performs FFC Normalization  
-    LEP_RESULT rebootCamera(); //!< Perform a camera Power Down and Power Up
+    
+    LEP_RESULT resetCamera(); //!< Perform a reboot without recovering the former status
+    LEP_RESULT rebootCamera(); //!< Perform a camera reboot recovering the former status
 
-    LEP_RESULT saveParams(); //!< Save current parameters to OTP. They will be reloaded after reboot
+    LEP_RESULT saveParams(); //!< Save current parameters to OTP. They will be reloaded after reboot (@NOTE: requires 5.9V on PIN 17 - VPROG, see Datasheet pg 34)
+    LEP_RESULT loadParams(); //!< Reload saved parameters from OTP.
     // <<<<< Controls
 
 protected:
@@ -160,7 +162,8 @@ private:
 
     bool mRgbEnabled;
 
-    int mResyncCount; //!< Number of consecutive resync
+    int mResyncCount;    //!< Number of consecutive resync
+    int mTotResyncCount; //!< Number of total resync
 };
 
 

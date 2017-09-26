@@ -78,6 +78,7 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
 
     mStop = false;
     mResyncCount = 0;
+    mTotResyncCount = 0;
 }
 
 Lepton3::~Lepton3()
@@ -535,17 +536,14 @@ void Lepton3::thread_func()
 	    if( mResyncCount == 30 ) // Camera locked!
 	    {
 	        mResyncCount=0;
+            
+            mBuffMutex.unlock();
+            
+            // Force a camera reboot           
+            rebootCamera();
+            
+            mResyncCount=0;
 	        
-            if( saveParams() == LEP_OK ) // Write current settings to OTP
-            {
-	           // Force a camera reboot           
-               rebootCamera();
-               
-               cout << "Waiting for camera ready \r\n";
-               std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-
-               mResyncCount=0;
-	        }
 	    }
 
         mBuffMutex.unlock();
@@ -569,10 +567,11 @@ void Lepton3::thread_func()
 void Lepton3::resync()
 {
     mResyncCount++;
+    mTotResyncCount++;
 
     //if( mDebugLvl>=DBG_INFO )
     {
-        cout << endl << "*** Forcing RESYNC *** [" << mResyncCount << "]\r" << "\r\n";
+        cout << endl << "*** Forcing RESYNC *** [" << mResyncCount << " - " << mTotResyncCount << "]" << "\r\n";
     }
 
     // >>>>> Resync
@@ -588,8 +587,8 @@ void Lepton3::resync()
     std::this_thread::sleep_for(std::chrono::microseconds(190000));
     // <<<<< Resync
 
-    mSpiTR.cs_change = 0; // Keep select after "ioctl"
-    ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );
+    /*mSpiTR.cs_change = 0; // Keep select after "ioctl"
+    ioctl( mSpiFd, SPI_IOC_MESSAGE(1), &mSpiTR );*/
 }
 
 bool Lepton3::CciConnect()
@@ -630,15 +629,6 @@ LEP_RESULT Lepton3::getSensorTemperatureK(float& tempK )
         cout << "FPA temperature: " << tempK << "°K - " ;
 
     return LEP_OK;
-}
-
-
-float Lepton3::raw2Celsius(float raw )
-{
-    float ambientTemperature = 25.0;
-    float slope = 0.0217;
-
-    return slope*raw+ambientTemperature-177.77;
 }
 
 LEP_RESULT Lepton3::lepton_perform_ffc()
@@ -1024,7 +1014,7 @@ LEP_RESULT Lepton3::doFFC()
     return LEP_OK;
 }
 
-LEP_RESULT Lepton3::rebootCamera()
+LEP_RESULT Lepton3::resetCamera()
 {
     if(!mCciConnected)
     {
@@ -1032,16 +1022,83 @@ LEP_RESULT Lepton3::rebootCamera()
             return LEP_ERROR;
     }
     
-    cout << "Performing Reboot .....\r" << "\r\n";
+    cout << "Performing Reset ....." << "\r\n";
     
     if( LEP_RunOemReboot( &mCciConnPort )  != LEP_OK )
     {
-            cerr << "Cannot power down the camera" << "\r\n";
+            cerr << "Cannot reset the camera" << "\r\n";
             
             return LEP_ERROR;
     }
 
-    cout << "..... Reboot Done \r" << "\r\n";
+    cout << "..... Reset Done " << "\r\n";
+}
+
+LEP_RESULT Lepton3::rebootCamera()
+{
+    cout << "Saving status ....." << "\r\n";
+    LEP_SYS_GAIN_MODE_E gainMode;
+    bool radiomStatus;
+    bool agcStatus;
+    bool rgbStatus;
+    
+    LEP_RESULT res;
+    
+    res = getGainMode( gainMode );  
+    if( res != LEP_OK )   
+    {
+        return res;
+    }
+    
+    res = getRadiometryStatus( radiomStatus );
+    if( res != LEP_OK )   
+    {
+        return res;
+    }
+    
+    res = getAgcStatus( agcStatus );
+    if( res != LEP_OK )   
+    {
+        return res;
+    }
+    
+    rgbStatus = isRgbEnable();   
+    cout << "..... status saved" << "\r\n";    
+
+    // Force a camera reset           
+    resetCamera();
+
+    cout << "Waiting for camera ready \r\n";
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));            
+
+    cout << "Restoring status ....." << "\r\n";
+    res = setGainMode( gainMode );
+    if( res != LEP_OK )   
+    {
+        return res;
+    }
+    
+    res = enableRadiometry( radiomStatus );
+    if( res != LEP_OK )   
+    {
+        return res;
+    }
+    
+    res = enableAgc( agcStatus );
+    if( res != LEP_OK )   
+    {
+        return res;
+    }
+    
+    res = enableRgbOutput( rgbStatus );
+    if( res != LEP_OK )   
+    {
+        return res;
+    }
+    
+    cout << "..... status restored" << "\r\n";
+    
+    return doFFC();
 }
 
 LEP_RESULT Lepton3::saveParams()
@@ -1059,9 +1116,26 @@ LEP_RESULT Lepton3::saveParams()
             return LEP_ERROR;
     }
 
-    cout << "Current Parameters saved to OTP\r" << "\r\n";
+    cout << "Current Parameters saved to OTP" << "\r\n";
 }
 
+LEP_RESULT Lepton3::loadParams()
+{
+    if(!mCciConnected)
+    {
+        if( !CciConnect() )
+            return LEP_ERROR;
+    }
+    
+    if( LEP_RunOemUserDefaultsCopyToOtp( &mCciConnPort )  != LEP_OK )
+    {
+            cerr << "Cannot save params to camera" << "\r\n";
+            
+            return LEP_ERROR;
+    }
+
+    cout << "Current Parameters saved to OTP" << "\r\n";
+}
 
 /*LEP_RESULT Lepton3::getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h )
 {
