@@ -48,7 +48,7 @@ Lepton3::Lepton3(std::string spiDevice, uint16_t cciPort, DebugLvl dbgLvl )
     mSpiMode = SPI_MODE_3; // CPOL=1 (Clock Idle high level),
     // CPHA=1 (SDO transmit/change edge idle to active)
     mSpiBits = 8;
-    mSpiSpeed = 40000000/*32500000*/; // Max available SPI speed (according to Lepton3 datasheet)
+    mSpiSpeed = 16000000; // Max available SPI speed on BBB (20Mhz max speed according to Lepton3 datasheet)
 
     mSpiTR.tx_buf = (unsigned long)NULL;
     mSpiTR.delay_usecs = 50;
@@ -281,7 +281,7 @@ int Lepton3::SpiReadSegment()
 
     // >>>>> Wait first valid packet
     mSpiTR.cs_change = 0;
-    mSpiTR.rx_buf = (unsigned long)(segmentAddr); // First Packet has been read above
+    mSpiTR.rx_buf = (unsigned long)(segmentAddr);
     mSpiTR.len = mPacketSize;
     while(1)
     {
