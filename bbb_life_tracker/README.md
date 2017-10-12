@@ -4,6 +4,9 @@ This demo has been realized for the *BeagleBone Blue and Lepton 3 Challenge* to 
 The idea is to detect the zone of the thermal image acquired by the Lepton3 sensor that can be associated to living beings.
 This kind of information can be used for robotic applications to avoid humans and animals or to track them, according to the system behaviour.
 
+[2017 Otc 11] "**SmarTC - Smart Thermal Camera**" won the *BeagleBone Blue and Lepton 3 Challenge*
+[Presentation of the project on YouTube](https://youtu.be/SreAGYvtbhI)
+
 Usage: ```bbb_life_tracker <trk_mode> <debug_ip_address> <raw_port> <res_port>  <multicast_interface> [debug_level]```
 
 * *trk_mode*:
