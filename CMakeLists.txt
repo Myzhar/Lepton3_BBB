@@ -10,8 +10,14 @@ set(CMAKE_DEBUG_POSTFIX "_d")
 set (CMAKE_CXX_STANDARD 11)
 #########################################################
 
+# bbb_life_tracker
+add_subdirectory (bbb_life_tracker)
+
 # Library source code
 add_subdirectory (grabber_lib)
 
-# GStreamer demo
+# OpenCV demo
 add_subdirectory (opencv_demo)
+
+# GStreamer demo
+add_subdirectory (gstreamer_demo)

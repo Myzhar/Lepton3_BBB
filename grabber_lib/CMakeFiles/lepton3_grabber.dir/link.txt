@@ -1,0 +1,2 @@
+/usr/bin/ar qc liblepton3_grabber.a  CMakeFiles/lepton3_grabber.dir/src/Lepton3.cpp.o CMakeFiles/lepton3_grabber.dir/src/stopwatch.cpp.o
+/usr/bin/ranlib liblepton3_grabber.a
