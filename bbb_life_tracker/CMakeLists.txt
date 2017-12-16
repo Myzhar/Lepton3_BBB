@@ -38,7 +38,7 @@ target_link_libraries (test_tracker LINK_PUBLIC
 add_executable (bbb_life_tracker bbb_life_tracker.cpp ${ENC_SRC} ${TRK_SRC} )
 target_link_libraries (bbb_life_tracker LINK_PUBLIC
                        lepton3_grabber
-                      ${LIB_GSTREAMER}
+                       ${LIB_GSTREAMER}
                        opencv_core
                        opencv_highgui
                        opencv_imgproc
