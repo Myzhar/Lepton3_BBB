@@ -59,17 +59,16 @@ public:
     const uint8_t* getLastFrameRGB( uint8_t& width, uint8_t& height );
     
     // >>>>> Controls
-    LEP_RESULT lepton_perform_ffc();              //!< Force FFC calculation
     LEP_RESULT getSensorTemperatureK(float& tempK);          //!< Get Temperature of the Flir Sensor in °K
-    float raw2Celsius(float raw);               //!< Converts a RAW value to °C
-
+    
     LEP_RESULT enableRadiometry( bool enable );    //!< Enable/Disable radiometry
     LEP_RESULT getRadiometryStatus(bool &status);  //!< Verify if Radiometry is enabled or not
 
     LEP_RESULT getAgcStatus(bool &status);         //!< Verify if AGC is enabled or not
     LEP_RESULT enableAgc( bool enable );           //!< Enable/Disable AGC
     
-    LEP_RESULT getGainMode( LEP_SYS_GAIN_MODE_E& mode); //!< Get Lepton3 gain mode                
+    LEP_RESULT getGainMode( LEP_SYS_GAIN_MODE_E& mode); //!< Get Lepton3 gain mode
+    LEP_RESULT setGainMode( LEP_SYS_GAIN_MODE_E newMode); //!< Set Lepton3 gain mode
 
     // >>>>> Not yet available on Lepton3
     //LEP_RESULT getSpotROI( uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& h ); //!< Get Spotmeter region
@@ -83,15 +82,19 @@ public:
     // TODO Add telemetry parsing function
 
     LEP_RESULT getVideoOutputFormat( LEP_OEM_VIDEO_OUTPUT_FORMAT_E& format  ); //!< Get Video Output format
-    LEP_RESULT enableRgbOutput( bool enable ); //!< Enable/Disable RGB video output format
-    LEP_RESULT setRgbLut( ); //!< Set RGB LUT
-
-    // TODO Add function to set RGB palette
-
+    
     bool isRgbEnable(){return mRgbEnabled;} //!< Verify if RGB video format is enabled
+    LEP_RESULT enableRgbOutput( bool enable ); //!< Enable/Disable RGB video output format
+    LEP_RESULT setRgbLut( ); //!< Set RGB LUT    
     
-    // >>>>> Not yet available on Lepton3
+    LEP_RESULT doFFC(); //!< Performs FFC Normalization  
+    LEP_RESULT doRadFFC(); //!< Performs Radiometric FFC Normalization
     
+    LEP_RESULT resetCamera(); //!< Perform a reboot without recovering the former status
+    LEP_RESULT rebootCamera(); //!< Perform a camera reboot recovering the former status
+
+    LEP_RESULT saveParams(); //!< Save current parameters to OTP. They will be reloaded after reboot (@NOTE: requires 5.9V on PIN 17 - VPROG, see Datasheet pg 34)
+    LEP_RESULT loadParams(); //!< Reload saved parameters from OTP.
     // <<<<< Controls
 
 protected:
@@ -158,6 +161,9 @@ private:
     uint16_t mMax;
 
     bool mRgbEnabled;
+
+    int mResyncCount;    //!< Number of consecutive resync
+    int mTotResyncCount; //!< Number of total resync
 };
 
 
