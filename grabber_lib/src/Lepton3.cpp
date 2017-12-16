@@ -631,20 +631,55 @@ LEP_RESULT Lepton3::getSensorTemperatureK(float& tempK )
     return LEP_OK;
 }
 
-LEP_RESULT Lepton3::lepton_perform_ffc()
+LEP_RESULT Lepton3::doRadFFC()
 {
     if(!mCciConnected)
     {
         if( !CciConnect() )
             return LEP_ERROR;
     }
-
-    if( LEP_RunSysFFCNormalization(&mCciConnPort) != LEP_OK )
+    
+    mBuffMutex.lock();
+    
+    cout << "Performing RAD FFC Normalization ....." << "\r\n";
+    
+    if( LEP_SetSysShutterPosition( &mCciConnPort, LEP_SYS_SHUTTER_POSITION_CLOSED )  != LEP_OK )
     {
-        cerr << "Could not perform FFC Normalization" << "\r\n";
+            cerr << "Cannot close shutter" << "\r\n";
+            
+            mBuffMutex.unlock();
+            return LEP_ERROR;
+    }
+    
+    if( LEP_RunRadFFC(&mCciConnPort) != LEP_OK )
+    {
+        cerr << "Could not perform RAD FFC Normalization" << "\r\n";
         return LEP_ERROR;
     }
-
+    
+    LEP_SYS_STATUS_E ffc_status;
+    do
+    {   
+        if( LEP_GetSysFFCStatus( &mCciConnPort, &ffc_status ) != LEP_OK )
+        {
+            cerr << "Cannot get RAD FFC normalization status" << "\r\n";
+            
+            mBuffMutex.unlock();
+            return LEP_ERROR;
+        }
+    } while( ffc_status==LEP_SYS_STATUS_BUSY );
+    
+    if( LEP_SetSysShutterPosition( &mCciConnPort, LEP_SYS_SHUTTER_POSITION_OPEN )  != LEP_OK )
+    {
+            cerr << "Cannot open shutter" << "\r\n";
+            
+            mBuffMutex.unlock();
+            return LEP_ERROR;
+    }
+    
+    cout << "..... RAD FFC Normalization DONE" << "\r\n";
+    
+    mBuffMutex.unlock();
     return LEP_OK;
 }
 

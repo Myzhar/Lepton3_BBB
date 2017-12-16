@@ -59,7 +59,6 @@ public:
     const uint8_t* getLastFrameRGB( uint8_t& width, uint8_t& height );
     
     // >>>>> Controls
-    LEP_RESULT lepton_perform_ffc();              //!< Force FFC calculation
     LEP_RESULT getSensorTemperatureK(float& tempK);          //!< Get Temperature of the Flir Sensor in °K
     
     LEP_RESULT enableRadiometry( bool enable );    //!< Enable/Disable radiometry
@@ -89,6 +88,7 @@ public:
     LEP_RESULT setRgbLut( ); //!< Set RGB LUT    
     
     LEP_RESULT doFFC(); //!< Performs FFC Normalization  
+    LEP_RESULT doRadFFC(); //!< Performs Radiometric FFC Normalization
     
     LEP_RESULT resetCamera(); //!< Perform a reboot without recovering the former status
     LEP_RESULT rebootCamera(); //!< Perform a camera reboot recovering the former status

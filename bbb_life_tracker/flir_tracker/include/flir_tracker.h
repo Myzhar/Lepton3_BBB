@@ -24,6 +24,9 @@ public:
         uint8_t rowMin=40, uint8_t rowMax=80);
     ~FlirTracker();
     
+    void setCentralZone( uint8_t rowMin, uint8_t rowMax ){ mRowMin=rowMin; mRowMax=rowMax; };
+    void getCentralZone( uint8_t& rowMin, uint8_t& rowMax ){ rowMin=mRowMin; rowMax=mRowMax; };
+    
     void setNewThresh(uint16_t minThresh, uint16_t maxThresh);
     
     TrackRes setNewFrame( cv::Mat frame16, uint16_t min, uint16_t max  ); //! Set new 16 bit frame and performs tracking step on it

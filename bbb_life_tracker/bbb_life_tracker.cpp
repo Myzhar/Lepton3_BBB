@@ -318,12 +318,13 @@ int main( int argc, char *argv[] )
             
             if( frameIdx == 50 )
             {
-                lepton3.doFFC();
+                lepton3.doRadFFC();
             }
         }
         
         // >>>>> Keyboard interaction
                 
+        uint8_t minRow, maxRow;                
         int c = getch();           
         
         switch(c)
@@ -334,7 +335,17 @@ int main( int argc, char *argv[] )
         
         case '2':
             tracker.setMode( FlirTracker::TRK_FOLLOW );
-        break;            
+        break;   
+        
+        case '+':
+            tracker.getCentralZone( minRow, maxRow ); 
+            tracker.setCentralZone( --minRow, ++maxRow );
+        break;
+        
+        case '-':
+            tracker.getCentralZone( minRow, maxRow ); 
+            tracker.setCentralZone( ++minRow, --maxRow );
+        break;
         
 	    case 'M':
 	    case 'm':
@@ -355,6 +366,11 @@ int main( int argc, char *argv[] )
 	    case 'I':
         case 'i':
             lepton3.doFFC();
+        break;
+        
+        case 'O':
+        case 'o':
+            lepton3.doRadFFC();
         break;
 		
         case 'W':
