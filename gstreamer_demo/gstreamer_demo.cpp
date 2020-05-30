@@ -197,7 +197,7 @@ int main( int   argc, char *argv[] )
                 frame16.convertTo( frame8, CV_8UC1 );
                 // <<<<< Rescaling/Normalization to 8bit
 
-                cv::cvtColor( frame8,frameRGB, CV_GRAY2RGB );
+                cv::cvtColor( frame8,frameRGB, cv::COLOR_GRAY2RGB );
             }
 
             if(gstEncoder)

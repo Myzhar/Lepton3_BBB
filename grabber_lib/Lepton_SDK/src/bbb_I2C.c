@@ -58,6 +58,9 @@
 #include <linux/i2c-dev.h>
 #include <errno.h>
 
+#include <unistd.h>
+#include <sys/ioctl.h>
+
 //#define _AVR_STK600_ATXMEGA128A1_BOARD
 
 //#ifdef _AVR_STK600_ATXMEGA128A1_BOARD
@@ -132,7 +135,7 @@ LEP_RESULT DEV_I2C_MasterInit(LEP_UINT16 portID,
    //aa_target_power(handle, AA_TARGET_POWER_BOTH);
 
     //do it live!
-    leptonDevice = open("/dev/i2c-1", O_RDWR);
+    leptonDevice = open("/dev/i2c-0", O_RDWR);
     if(leptonDevice < 0) {
 	//we have problem connecting
 	result = LEP_ERROR;

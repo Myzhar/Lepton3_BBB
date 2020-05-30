@@ -14,9 +14,11 @@
 #include "stopwatch.hpp"
 
 // >>>>> Demo configuration
-#define SAVE_MJPEG 1 // Comment to save frames to PNG images
+//#define SAVE_MJPEG 1 // Comment to save frames to PNG images
 
 #define USE_RGB true
+
+#define SHOW_STREAM true
 // <<<<< Demo configuration
 
 using namespace std;
@@ -80,7 +82,7 @@ int main (int argc, char *argv[])
     bool writeFrame = writer.isOpened();
 #endif
 
-    Lepton3 lepton3( "/dev/spidev1.0", 1, deb_lvl );
+    Lepton3 lepton3( "/dev/spidev0.0", 0, deb_lvl );
     
     if( lepton3.enableRadiometry( !USE_RGB ) < 0)
     {
@@ -171,7 +173,7 @@ int main (int argc, char *argv[])
             if(rgb && dataRGB)
             {
                 memcpy( frameRGB.data, dataRGB, 3*w*h*sizeof(uint8_t) );
-                cv::cvtColor(frameRGB,frameRGB, CV_RGB2BGR );
+                cv::cvtColor(frameRGB,frameRGB, cv::COLOR_RGB2BGR );
             }
             else if( !rgb && data16 )
             {
@@ -188,14 +190,22 @@ int main (int argc, char *argv[])
                 frame16.convertTo( frame8, CV_8UC1 );
                 // <<<<< Rescaling/Normalization to 8bit
 
-                cv::cvtColor( frame8,frameRGB, CV_GRAY2RGB ); // MPEG needs RGB frames
+                cv::cvtColor( frame8,frameRGB, cv::COLOR_GRAY2RGB ); // MPEG needs RGB frames
             }
+
+
 
 #ifdef SAVE_MJPEG
             if(writeFrame)
             {
                 writer.write(frameRGB);
             }
+#else
+#ifdef SHOW_STREAM
+            cv::Mat rescaledImg;
+            cv::resize( frameRGB, rescaledImg, cv::Size(), 3.0,3.0);
+            cv::imshow( "Stream", rescaledImg );
+            cv::waitKey(1);
 #else
             char image_name[32];
             sprintf(image_name, "IMG_%.6lu.png", frameIdx);
@@ -207,6 +217,7 @@ int main (int argc, char *argv[])
             {
                 cout << "> " << imgStr << endl;
             }
+#endif
 #endif
 
             frameIdx++;

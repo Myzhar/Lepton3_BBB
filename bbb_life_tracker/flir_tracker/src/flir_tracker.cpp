@@ -148,7 +148,7 @@ cv::Mat FlirTracker::getResFrameRGB()
 
     cv::Mat temp8 = normalizeFrame( mFrame16, mFrameMin, mFrameMax );
 
-    cv::cvtColor( temp8, mResRGB, CV_GRAY2BGR );
+    cv::cvtColor( temp8, mResRGB, cv::COLOR_GRAY2BGR );
 
     //mResRGB.create(temp8.size(), CV_8UC3 );
     //cv::imshow( "Original_int", mResRGB );

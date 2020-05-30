@@ -73,7 +73,7 @@ int main( int argc, char* argv[] )
                 scale.data[idx+0] = lut[r*3+2];
             }
         }
-        cv::string label = "#";
+        std::string label = "#";
         label += std::to_string( i );
         cv::imshow( label , scale );
     }

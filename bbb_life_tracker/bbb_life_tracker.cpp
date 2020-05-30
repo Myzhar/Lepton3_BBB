@@ -284,7 +284,7 @@ int main( int argc, char *argv[] )
                 cv::Mat frameRGB;
 
                 frameRGB = FlirTracker::normalizeFrame( frame16, min, max );
-                cv::cvtColor(frameRGB,frameRGB,CV_GRAY2BGR);
+                cv::cvtColor(frameRGB,frameRGB,cv::COLOR_GRAY2BGR);
 
                 cv::Mat frameYUV( h+h/2, w, CV_8UC1 );
                 cv::cvtColor( frameRGB, frameYUV, cv::COLOR_RGB2YUV_I420 );
